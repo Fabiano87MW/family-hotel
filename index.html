@@ -99,7 +99,6 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
   table,thead,tbody,tr,td{ display:block; width:100%; }
   thead{ display:none; }
   tbody tr{ background:#fff; border:1px solid #e6e3dd; border-radius:10px; margin-bottom:10px; padding:8px 10px; position:relative; }
-  tbody tr.mod{ box-shadow:inset 3px 0 0 #c2892f; }
   td{ border:0; padding:2px 0; text-align:left !important; }
   td.rank{ display:none; }
   td:nth-child(1){ position:absolute; right:8px; top:8px; width:auto; }
@@ -107,10 +106,8 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
     letter-spacing:.4px; color:#9b9488; font-weight:600; margin-right:4px; }
   .note{ max-width:none; }
   .bar{ width:100%; }
-  #editor{ right:8px; left:8px; width:auto; bottom:8px; max-height:70vh; }
-  .eg{ grid-template-columns:1fr 1fr; }
-  .filters{ gap:6px; }
-  select,input[type=text],input[type=number],input[type=date]{ font-size:16px; }
+  #editor{ right:8px; left:8px; width:auto; bottom:8px; max-height:72vh; }
+  select,input[type=text],input[type=number],input[type=date],textarea{ font-size:16px; }
 }
 </style>
 </head>
@@ -172,7 +169,7 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
 
 <div class="count">
   <span id="count"></span>
-  <span><button class="btn" id="expover">Esporta le mie modifiche</button> <span id="overmsg" style="font-size:11.5px;color:#8a8378"></span> <button class="btn" id="selall">Seleziona i visibili</button> <button class="btn" id="selnone">Deseleziona tutto</button></span>
+  <span><button class="btn primary" id="addnew">+ Aggiungi struttura</button> <button class="btn" id="expover">Esporta</button> <button class="btn" id="impover">Importa</button> <span id="overmsg" style="font-size:11.5px;color:#8a8378"></span> <button class="btn" id="selall">Seleziona i visibili</button> <button class="btn" id="selnone">Deseleziona tutto</button></span>
 </div>
 
 <div class="tablewrap">
@@ -257,9 +254,21 @@ let W = {...DEFAULT_W};
 let sortKey="score", sortDir=-1;
 const selected = new Set();
 
-let OVER={}; try{ OVER=JSON.parse(localStorage.getItem('fh_taa_over')||'{}'); }catch(e){}
+let REPO_OVER={}, REPO_NEW=[];            /* provenienti da data.json, condivisi fra dispositivi */
+let OVER={}, NEWH=[];                      /* locali a questo dispositivo */
+try{ OVER=JSON.parse(localStorage.getItem('fh_taa_over')||'{}'); }catch(e){}
+try{ NEWH=JSON.parse(localStorage.getItem('fh_taa_new')||'[]'); }catch(e){}
+const saveNew=()=>{ try{ localStorage.setItem('fh_taa_new',JSON.stringify(NEWH)); }catch(e){} };
+function blank(){ const o={}; F.forEach(k=>o[k]=null); o.tratt='n.d.'; o.nordica=-1; o.note=''; return o; }
 const saveOver=()=>{ try{ localStorage.setItem('fh_taa_over',JSON.stringify(OVER)); }catch(e){} };
-function LIVE(){ return HOTELS.map(h=>{ const o=OVER[hkey(h)]; return o&&Object.keys(o).length? {...h,...o,_mod:Object.keys(o)} : h; }); }
+function LIVE(){
+  const base=[...HOTELS.map(h=>{ const r=REPO_OVER[hkey(h)]; return r? {...h,...r,_rep:Object.keys(r)} : h; }),
+              ...REPO_NEW.map(h=>({...h,_add:'condivisa'})),
+              ...NEWH.map(h=>({...h,_add:'tua'}))];
+  return base.map(h=>{ const o=OVER[hkey(h)];
+    if(!o||!Object.keys(o).length) return h._rep? {...h,_lock:h._rep}:h;
+    return {...h,...o,_mod:Object.keys(o),_lock:[...new Set([...(h._rep||[]),...Object.keys(o)])]}; });
+}
 const hkey = h => h.nome + " · " + h.loc;   // chiave univoca: esistono omonimi (es. due Hotel Erica)
 const famPrice = h => h.prezzo==null ? null : Math.round(h.prezzo*3);
 const isRated  = h => CRIT.every(k => h[k] != null);
@@ -349,69 +358,106 @@ function visibleRows(){
 }
 
 
-/* ================= modifiche manuali di Fabiano ================= */
+/* ================= modifiche e aggiunte di Fabiano =================
+   Regola: quello che scrive Fabiano è definitivo. I campi che tocca
+   restano bloccati e non vengono più sovrascritti da nessun aggiornamento. */
 const EXP=new Set();
 const NORD=[[2,'confermata'],[1,'probabile'],[0,'improbabile'],[-1,'non verificato']];
 const EMV=[['null','nessun indirizzo'],['0','da confermare'],['1','verificata sul sito ufficiale']];
 const CRITLBL={spa:'SPA',giochi:'Area giochi interna',piscine:'Piscine interne',miniclub:'Miniclub',attivita:'Programma attività',cucina:'Cucina'};
-let EDK=null;
 
-function origOf(k){ return HOTELS.find(x=>hkey(x)===k); }
+function origOf(k){ return LIVE().find(x=>hkey(x)===k); }
 function opt(v,l,cur){ return '<option value="'+v+'"'+(String(cur)===String(v)?' selected':'')+'>'+l+'</option>'; }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
 function openEditor(k){
-  EDK=k; const o=origOf(k); if(!o) return;
-  const cur={...o,...(OVER[k]||{})};
-  const zone=[...new Set(HOTELS.map(h=>h.zona))].sort();
-  const num=(v)=>v==null?'':v;
+  const isAdd = k===null;
+  const cur = isAdd ? blank() : origOf(k);
+  if(!cur) return;
+  const locked = new Set(cur._lock||[]);
+  const zone=[...new Set([...HOTELS.map(h=>h.zona),...NEWH.map(h=>h.zona)].filter(Boolean))].sort();
+  const num=v=>v==null?'':v;
+  const lk=f=>locked.has(f)?' <span class="tag mod">bloccato</span>':'';
   const el=document.getElementById('editor')||Object.assign(document.createElement('div'),{id:'editor'});
   el.innerHTML=
-   '<h3>'+o.nome+'</h3><div class="sub2">'+(o.loc||'')+' · le tue modifiche restano su questo dispositivo e vincono sul dato del catalogo</div>'
-   +'<label>Email</label><input id="e_email" value="'+(cur.email||'')+'">'
-   +'<label>Stato dell’indirizzo</label><select id="e_emailv">'+EMV.map(x=>opt(x[0],x[1],cur.emailv===null?'null':cur.emailv)).join('')+'</select>'
-   +'<div class="eg"><div><label>Tariffa €/adulto/notte</label><input id="e_prezzo" type="number" min="0" step="1" value="'+num(cur.prezzo)+'"></div>'
-   +'<div><label>Trattamento</label><input id="e_tratt" value="'+(cur.tratt||'')+'"></div></div>'
+   '<h3>'+(isAdd?'Nuova struttura':esc(cur.nome))+'</h3>'
+   +'<div class="sub2">'+(isAdd?'La aggiungi tu: nessun aggiornamento automatico la toccherà.'
+        :'I campi che modifichi restano <b>bloccati</b>: né io né l’agente li sovrascriveremo.')+'</div>'
+   +(isAdd?'<label>Nome</label><input id="e_nome" value="">'
+          +'<label>Località</label><input id="e_loc" value="">':'')
+   +'<label>Email'+lk('email')+'</label><input id="e_email" value="'+esc(cur.email)+'">'
+   +'<label>Stato dell’indirizzo</label><select id="e_emailv">'+EMV.map(x=>opt(x[0],x[1],cur.emailv==null?'null':cur.emailv)).join('')+'</select>'
+   +'<div class="eg"><div><label>Tariffa €/adulto/notte'+lk('prezzo')+'</label><input id="e_prezzo" type="number" min="0" step="1" value="'+num(cur.prezzo)+'"></div>'
+   +'<div><label>Trattamento</label><input id="e_tratt" value="'+esc(cur.tratt)+'"></div></div>'
    +'<div class="eg"><div><label>Categoria</label><select id="e_stelle">'
      +['','3','3.5','4','4.5','5'].map(v=>opt(v,v===''?'n.d.':(v.endsWith('.5')?v[0]+' stelle S':v+' stelle'),cur.stelle==null?'':cur.stelle)).join('')+'</select></div>'
-   +'<div><label>Minuti da Castelli Calepio</label><input id="e_minuti" type="number" min="0" step="5" value="'+num(cur.minuti)+'"></div></div>'
+   +'<div><label>Minuti da casa</label><input id="e_minuti" type="number" min="0" step="5" value="'+num(cur.minuti)+'"></div></div>'
    +'<div class="eg"><div><label>Zona</label><select id="e_zona">'+zone.map(z=>opt(z,z,cur.zona)).join('')+'</select></div>'
-   +'<div><label>Tuo giudizio</label><select id="e_liv">'+[['','—'],['TOP','TOP'],['BELLO','BELLO'],['MEDIO','MEDIO'],['BASE','BASE']].map(x=>opt(x[0],x[1],cur.liv||'')).join('')+'</select></div></div>'
-   +'<label>SPA nordica (costume non previsto)</label><select id="e_nordica">'+NORD.map(x=>opt(x[0],x[1],cur.nordica)).join('')+'</select>'
-   +'<div class="eg">'+Object.keys(CRITLBL).map(c=>'<div><label>'+CRITLBL[c]+'</label><select id="e_'+c+'">'
+   +'<div><label>Tuo giudizio'+lk('liv')+'</label><select id="e_liv">'+[['','—'],['TOP','TOP'],['BELLO','BELLO'],['MEDIO','MEDIO'],['BASE','BASE']].map(x=>opt(x[0],x[1],cur.liv||'')).join('')+'</select></div></div>'
+   +'<label>SPA nordica'+lk('nordica')+'</label><select id="e_nordica">'+NORD.map(x=>opt(x[0],x[1],cur.nordica)).join('')+'</select>'
+   +'<div class="eg">'+Object.keys(CRITLBL).map(c=>'<div><label>'+CRITLBL[c]+lk(c)+'</label><select id="e_'+c+'">'
      +['','0','1','2','3','4','5'].map(v=>opt(v,v===''?'da valutare':v,cur[c]==null?'':cur[c])).join('')+'</select></div>').join('')+'</div>'
-   +'<label>Sito ufficiale</label><input id="e_url" value="'+(cur.url||'')+'">'
-   +'<label>Note</label><textarea id="e_note" rows="4">'+(cur.note||'')+'</textarea>'
+   +'<label>Sito ufficiale</label><input id="e_url" value="'+esc(cur.url)+'">'
+   +'<label>Note</label><textarea id="e_note" rows="4">'+esc(cur.note)+'</textarea>'
    +'<div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">'
    +'<button class="btn primary" id="e_save">Salva</button>'
-   +'<button class="btn" id="e_reset">Annulla le mie modifiche</button>'
+   +(isAdd?'':'<button class="btn" id="e_reset">Sblocca e ripristina</button>')
+   +(isAdd||cur._add!=='tua'?'':'<button class="btn" id="e_del">Elimina</button>')
    +'<button class="btn" id="e_close">Chiudi</button></div>';
   if(!el.parentNode) document.body.appendChild(el);
-  document.getElementById('e_save').onclick=()=>{
-    const g=id=>document.getElementById('e_'+id).value;
-    const n=v=>v===''?null:Number(v);
-    const cand={email:g('email').trim()||null, emailv:g('emailv')==='null'?null:Number(g('emailv')),
+
+  const g=id=>{const e=document.getElementById('e_'+id); return e?e.value:'';};
+  const n=v=>v===''?null:Number(v);
+  const raccogli=()=>{
+    const c={email:g('email').trim()||null, emailv:g('emailv')==='null'?null:Number(g('emailv')),
       prezzo:n(g('prezzo')), tratt:g('tratt').trim()||'n.d.', stelle:n(g('stelle')), minuti:n(g('minuti')),
       zona:g('zona'), liv:g('liv')||null, nordica:Number(g('nordica')),
       url:g('url').trim()||null, note:g('note').trim()};
-    Object.keys(CRITLBL).forEach(c=>cand[c]=n(g(c)));
-    if(!cand.email) cand.emailv=null; else if(cand.emailv===null) cand.emailv=0;
-    const base=origOf(k), diff={};
-    Object.keys(cand).forEach(f=>{ if(JSON.stringify(cand[f])!==JSON.stringify(base[f])) diff[f]=cand[f]; });
-    if(Object.keys(diff).length) OVER[k]=diff; else delete OVER[k];
-    saveOver(); render(); closeEditor();
+    Object.keys(CRITLBL).forEach(x=>c[x]=n(g(x)));
+    if(!c.email) c.emailv=null; else if(c.emailv===null) c.emailv=0;
+    return c;
   };
-  document.getElementById('e_reset').onclick=()=>{ delete OVER[k]; saveOver(); render(); closeEditor(); };
+  document.getElementById('e_save').onclick=()=>{
+    const c=raccogli();
+    if(isAdd){
+      const nome=g('nome').trim(), loc=g('loc').trim();
+      if(!nome){ alert('Serve almeno il nome della struttura.'); return; }
+      NEWH.push({...blank(),...c,nome,loc:loc||'—'}); saveNew();
+    } else {
+      const base=HOTELS.find(x=>hkey(x)===k) || REPO_NEW.find(x=>hkey(x)===k) || NEWH.find(x=>hkey(x)===k);
+      const idx=NEWH.findIndex(x=>hkey(x)===k);
+      if(idx>=0){ NEWH[idx]={...NEWH[idx],...c}; saveNew(); }
+      else { const diff={}; Object.keys(c).forEach(f=>{ if(JSON.stringify(c[f])!==JSON.stringify(base[f])) diff[f]=c[f]; });
+             if(Object.keys(diff).length) OVER[k]=diff; else delete OVER[k]; saveOver(); }
+    }
+    render(); closeEditor();
+  };
+  const rs=document.getElementById('e_reset');
+  if(rs) rs.onclick=()=>{ if(confirm('Sblocca i campi e ripristina il dato del catalogo?')){ delete OVER[k]; saveOver(); render(); closeEditor(); } };
+  const dl=document.getElementById('e_del');
+  if(dl) dl.onclick=()=>{ if(confirm('Eliminare questa struttura aggiunta da te?')){ NEWH=NEWH.filter(x=>hkey(x)!==k); saveNew(); delete OVER[k]; saveOver(); render(); closeEditor(); } };
   document.getElementById('e_close').onclick=closeEditor;
 }
-function closeEditor(){ const e=document.getElementById('editor'); if(e) e.remove(); EDK=null; }
+function closeEditor(){ const e=document.getElementById('editor'); if(e) e.remove(); }
 
-function overCount(){ return Object.keys(OVER).length; }
+function overCount(){ return Object.keys(OVER).length + NEWH.length; }
+function pacchetto(){ return {esportato:new Date().toISOString(), modifiche:OVER, aggiunte:NEWH}; }
 function exportOver(){
-  const out=Object.entries(OVER).map(([k,v])=>({struttura:k,modifiche:v}));
-  const txt=JSON.stringify({esportato:new Date().toISOString().slice(0,10),totale:out.length,dati:out},null,1);
+  const txt=JSON.stringify(pacchetto(),null,1);
   navigator.clipboard.writeText(txt).then(()=>{
-    document.getElementById('overmsg').textContent='Copiato: '+out.length+' strutture. Incollalo in chat per farle entrare nel catalogo definitivo.';
-  });
+    document.getElementById('overmsg').textContent='Copiato: '+Object.keys(OVER).length+' modifiche e '+NEWH.length+' aggiunte. Incollamelo in chat per renderle definitive su tutti i dispositivi.';
+  },()=>{ prompt('Copia questo testo:',txt); });
+}
+function importOver(){
+  const t=prompt('Incolla qui il pacchetto esportato da un altro dispositivo:');
+  if(!t) return;
+  try{
+    const d=JSON.parse(t);
+    if(d.modifiche) Object.assign(OVER,d.modifiche);
+    if(Array.isArray(d.aggiunte)){ const k=new Set(NEWH.map(hkey)); d.aggiunte.forEach(a=>{ if(!k.has(hkey(a))) NEWH.push(a); }); }
+    saveOver(); saveNew(); render();
+    document.getElementById('overmsg').textContent='Importato.';
+  }catch(e){ alert('Non è un pacchetto valido: '+e.message); }
 }
 
 function render(){
@@ -424,14 +470,14 @@ function render(){
     else if (p>budget*1.3) ptag='<span class="tag bad">fuori budget</span>';
     else if (p>budget) ptag='<span class="tag warn">sopra soglia</span>';
     const on=selected.has(hkey(h));
-    return `<tr class="${on?"sel":""} ${h.rated?"":"todo"} ${h._mod?"mod":""} ${EXP.has(hkey(h))?"exp":""}">
+    return `<tr class="${on?"sel":""} ${h.rated?"":"todo"} ${(h._lock||h._add)?"mod":""} ${EXP.has(hkey(h))?"exp":""}">
       <td><input type="checkbox" class="rowchk" data-n="${hkey(h).replace(/"/g,"&quot;")}" ${on?"checked":""}></td>
       <td class="rank">${i+1}</td>
       <td><div class="name">${h.url?`<a href="${h.url}" target="_blank" rel="noopener">${h.nome}</a>`:h.nome}</div>
           <div class="loc">${h.loc}${h.rated?"":' · <span class="tag grey">da valutare</span>'} ${mailTag(h)}</div></td>
-      <td class="loc" data-l="Zona">${h.zona}</td>
-      <td class="num" data-l="Viaggio">${hhmm(h.minuti)}</td>
-      <td class="num" data-l="Categoria">${starTxt(h.stelle)}</td>
+      <td data-l="Zona" class="loc">${h.zona}</td>
+      <td data-l="Viaggio" class="num">${hhmm(h.minuti)}</td>
+      <td data-l="Categoria" class="num">${starTxt(h.stelle)}</td>
       <td class="num">${p==null?"—":"≈ "+p+" €"}<br>${ptag}<span class="tag grey">${h.tratt}</span></td>
       <td data-l="SPA">${dots(h.spa)}</td>
       <td data-l="SPA nordica">${nordTag(h.nordica)}</td>
@@ -440,14 +486,14 @@ function render(){
       <td data-l="Miniclub">${dots(h.miniclub)}</td>
       <td data-l="Attività">${dots(h.attivita)}</td>
       <td data-l="Cucina">${dots(h.cucina)}</td>
-      <td>${livTag(h.liv)}${h._mod?` <span class="tag mod" title="Modificati da te: ${h._mod.join(", ")}">tuo</span>`:""}</td>
+      <td>${livTag(h.liv)}${h._lock?` <span class="tag mod" title="Campi bloccati: ${h._lock.join(", ")}">bloccato</span>`:""}${h._add?` <span class="tag" style="background:#eaf3ee;color:#2f6f4f">aggiunta ${h._add}</span>`:""}</td>
       <td class="num"><span class="score">${h.score.toFixed(1)}</span><div class="bar"><i style="width:${h.score}%"></i></div></td>
       <td class="note"><div class="txt">${h.note||""}</div><div style="margin-top:3px;display:flex;gap:4px"><button class="more" data-k="${hkey(h).replace(/"/g,"&quot;")}">+</button><button class="edit" data-k="${hkey(h).replace(/"/g,"&quot;")}">modifica</button></div></td></tr>`;
   }).join("");
 
-  const nRated=LIVE().filter(isRated).length;
+  const ALLH=LIVE(); const nRated=ALLH.filter(isRated).length;
   document.getElementById("count").innerHTML =
-    `<b>${rows.length}</b> strutture mostrate su ${HOTELS.length} in catalogo (${nRated} valutate, ${HOTELS.length-nRated} da valutare) · budget ${budget} €/notte famiglia · <b>${selected.size}</b> selezionate`;
+    `<b>${rows.length}</b> strutture mostrate su ${ALLH.length} in catalogo (${nRated} valutate, ${ALLH.length-nRated} da valutare) · budget ${budget} €/notte famiglia · <b>${selected.size}</b> selezionate`;
 
   document.querySelectorAll("th[data-k]").forEach(th=>{
     th.classList.remove("sorted","asc");
@@ -456,7 +502,7 @@ function render(){
   document.querySelectorAll(".more").forEach(b=>b.onclick=()=>{ const k=b.dataset.k; EXP.has(k)?EXP.delete(k):EXP.add(k); render(); });
   document.querySelectorAll(".edit").forEach(b=>b.onclick=()=>openEditor(b.dataset.k));
   const om=document.getElementById("overmsg");
-  if(om) om.textContent = overCount()? overCount()+" strutture con tue modifiche" : "";
+  if(om) om.textContent = overCount()? (Object.keys(OVER).length+" modificate, "+NEWH.length+" aggiunte da te") : "";
   document.querySelectorAll(".rowchk").forEach(c=>c.addEventListener("change",e=>{
     const n=e.target.dataset.n;
     e.target.checked ? selected.add(n) : selected.delete(n);
@@ -550,7 +596,7 @@ Object.keys(DEFAULT_W).forEach(k=>document.getElementById("w_"+k).addEventListen
   W[k]=+e.target.value; document.getElementById("v_"+k).textContent=e.target.value; save(); render(); }));
 
 document.getElementById("fzona").innerHTML='<option value="">Tutte le zone</option>'+
-  [...new Set(HOTELS.map(h=>h.zona))].sort().map(z=>`<option>${z}</option>`).join("");
+  [...new Set(LIVE().map(h=>h.zona).filter(Boolean))].sort().map(z=>`<option>${z}</option>`).join("");
 ["fzona","fbudget","fstelle","fstato","fliv","fsearch","budget","maxmin","reqNordica"].forEach(id=>
   document.getElementById(id).addEventListener("input",()=>{ save(); render(); }));
 document.querySelectorAll(".req").forEach(c=>c.addEventListener("change",()=>{ save(); render(); }));
@@ -562,6 +608,8 @@ document.querySelectorAll("th[data-k]").forEach(th=>th.addEventListener("click",
 }));
 document.getElementById("selall").addEventListener("click",()=>{ visibleRows().forEach(h=>selected.add(hkey(h))); save(); render(); });
 document.getElementById("expover").addEventListener("click",exportOver);
+document.getElementById("impover").addEventListener("click",importOver);
+document.getElementById("addnew").addEventListener("click",()=>openEditor(null));
 document.getElementById("selnone").addEventListener("click",()=>{ selected.clear(); save(); render(); });
 document.getElementById("masterchk").addEventListener("change",e=>{
   e.target.checked ? visibleRows().forEach(h=>selected.add(hkey(h))) : selected.clear(); save(); render(); });
@@ -608,7 +656,8 @@ load(); document.getElementById("mailBody").value=buildBody(); render();
 }
 fetch('data.json?v='+Date.now(),{cache:'no-store'})
  .then(r=>{ if(!r.ok) throw new Error(r.status); return r.json(); })
- .then(d=>{ F=d.fields; RAW=d.rows; document.getElementById('agg').textContent='Dati aggiornati al '+d.aggiornato; boot(); })
+ .then(d=>{ F=d.fields; RAW=d.rows; boot(); REPO_OVER=d.overrides||{}; REPO_NEW=d.aggiunte||[]; if(typeof render==='function') render();
+   document.getElementById('agg').textContent='Dati aggiornati al '+d.aggiornato+' · '+d.statistiche.strutture+' strutture, '+d.statistiche.emailVerificate+' email verificate'; })
  .catch(e=>{ document.getElementById('agg').innerHTML='<b style="color:#9d3b34">Dati non caricati ('+e.message+'). Serve connessione.</b>'; });
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
