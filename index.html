@@ -2,7 +2,7 @@
 {
   "name": "Family Hotel Trentino Alto Adige",
   "schemaVersion": 1,
-  "description": "Catalogo di 90 family hotel del Trentino-Alto Adige (63 valutati) con punteggio sui 7 criteri di Fabiano: SPA, SPA nordica, area giochi interna, piscine interne, miniclub, programma attività, cucina. Più rapporto col budget e tempo di percorrenza da Castelli Calepio (BG). Pesi regolabili, filtri a requisito obbligatorio, selezione multipla e composizione della richiesta di preventivo con invio in CCN ai soli indirizzi verificati sui siti ufficiali."
+  "description": "Catalogo di 235 family hotel del Trentino-Alto Adige con punteggio sui 7 criteri di Fabiano (SPA, SPA nordica, area giochi interna, piscine interne, miniclub, programma attività, cucina), rapporto col budget e tempo di percorrenza da Castelli Calepio. Include il catalogo personale di Fabiano con il suo giudizio TOP/BELLO/MEDIO/BASE come colonna di confronto. 192 indirizzi email, di cui 15 verificati sui siti ufficiali. Selezione multipla e composizione della richiesta di preventivo in CCN."
 }
 </script>
 <html lang="it">
@@ -93,19 +93,14 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
 .warnbox { font-size:11.5px; background:#fdf6ec; border:1px solid #f0e0c6; border-radius:8px; padding:9px 11px; margin-bottom:10px; color:#7a5a2a; }
 .hidden { display:none; }
 @media (max-width:760px){
-  body{ padding:10px; font-size:14px; }
-  h1{ font-size:18px; }
+  body{ padding:10px; font-size:14px; } h1{ font-size:18px; }
   .tablewrap{ border:0; background:transparent; max-height:none; overflow:visible; }
-  table,thead,tbody,tr,td{ display:block; width:100%; }
-  thead{ display:none; }
+  table,thead,tbody,tr,td{ display:block; width:100%; } thead{ display:none; }
   tbody tr{ background:#fff; border:1px solid #e6e3dd; border-radius:10px; margin-bottom:10px; padding:8px 10px; position:relative; }
-  td{ border:0; padding:2px 0; text-align:left !important; }
-  td.rank{ display:none; }
+  td{ border:0; padding:2px 0; text-align:left !important; } td.rank{ display:none; }
   td:nth-child(1){ position:absolute; right:8px; top:8px; width:auto; }
-  td[data-l]::before{ content:attr(data-l) " "; font-size:10.5px; text-transform:uppercase;
-    letter-spacing:.4px; color:#9b9488; font-weight:600; margin-right:4px; }
-  .note{ max-width:none; }
-  .bar{ width:100%; }
+  td[data-l]::before{ content:attr(data-l) " "; font-size:10.5px; text-transform:uppercase; letter-spacing:.4px; color:#9b9488; font-weight:600; margin-right:4px; }
+  .note{ max-width:none; } .bar{ width:100%; }
   #editor{ right:8px; left:8px; width:auto; bottom:8px; max-height:72vh; }
   select,input[type=text],input[type=number],input[type=date],textarea{ font-size:16px; }
 }
@@ -135,13 +130,13 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
       <option value="near" selected>Entro budget +30%</option>
       <option value="all">Tutti</option>
     </select>
-    <select id="fstelle">
-      <option value="no5" selected>3 e 4 stelle (esclude i 5★)</option>
-      <option value="">Tutte le categorie</option>
-      <option value="3">3 stelle / 3S</option>
-      <option value="4">4 stelle / 4S</option>
-      <option value="5">5 stelle</option>
-    </select>
+    <span style="font-size:11.5px;color:#8a8378;margin-left:4px">Categoria:</span>
+    <label class="chk"><input type="checkbox" class="star" data-v="3" checked> 3★</label>
+    <label class="chk"><input type="checkbox" class="star" data-v="3.5" checked> 3S</label>
+    <label class="chk"><input type="checkbox" class="star" data-v="4" checked> 4★</label>
+    <label class="chk"><input type="checkbox" class="star" data-v="4.5" checked> 4S</label>
+    <label class="chk"><input type="checkbox" class="star" data-v="5"> 5★</label>
+    <label class="chk"><input type="checkbox" class="star" data-v="nd" checked> n.d.</label>
     <select id="fliv">
       <option value="nobase" selected>Escludi le tue BASE</option>
       <option value="">Qualsiasi tuo giudizio</option>
@@ -323,7 +318,8 @@ function visibleRows(){
   const budget = +document.getElementById("budget").value || 250;
   const maxmin = +document.getElementById("maxmin").value || 240;
   const fz=document.getElementById("fzona").value, fb=document.getElementById("fbudget").value;
-  const fs=document.getElementById("fstelle").value, fst=document.getElementById("fstato").value;
+  const fst=document.getElementById("fstato").value;
+  const STARS=[...document.querySelectorAll(".star:checked")].map(c=>c.dataset.v);
   const q=document.getElementById("fsearch").value.trim().toLowerCase();
   const reqs=[...document.querySelectorAll(".req:checked")].map(c=>c.dataset.r);
   const reqN=document.getElementById("reqNordica").checked;
@@ -331,10 +327,7 @@ function visibleRows(){
   return LIVE().map(h=>({...h, prezzoFam:famPrice(h), rated:isRated(h), score:score(h,budget,maxmin)}))
     .filter(h=>{
       if (fz && h.zona!==fz) return false;
-      if (fs==="no5" && h.stelle===5) return false;
-      if (fs==="3" && !(h.stelle>=3 && h.stelle<4)) return false;
-      if (fs==="4" && !(h.stelle>=4 && h.stelle<5)) return false;
-      if (fs==="5" && h.stelle!==5) return false;
+      if (STARS.length && !STARS.includes(h.stelle==null?"nd":String(h.stelle))) return false;
       const fl=document.getElementById("fliv").value;
       if (fl==="nobase"  && h.liv==="BASE") return false;
       if (fl==="topbello"&& !["TOP","BELLO"].includes(h.liv)) return false;
@@ -597,9 +590,10 @@ Object.keys(DEFAULT_W).forEach(k=>document.getElementById("w_"+k).addEventListen
 
 document.getElementById("fzona").innerHTML='<option value="">Tutte le zone</option>'+
   [...new Set(LIVE().map(h=>h.zona).filter(Boolean))].sort().map(z=>`<option>${z}</option>`).join("");
-["fzona","fbudget","fstelle","fstato","fliv","fsearch","budget","maxmin","reqNordica"].forEach(id=>
+["fzona","fbudget","fstato","fliv","fsearch","budget","maxmin","reqNordica"].forEach(id=>
   document.getElementById(id).addEventListener("input",()=>{ save(); render(); }));
 document.querySelectorAll(".req").forEach(c=>c.addEventListener("change",()=>{ save(); render(); }));
+document.querySelectorAll(".star").forEach(c=>c.addEventListener("change",()=>{ save(); render(); }));
 
 document.querySelectorAll("th[data-k]").forEach(th=>th.addEventListener("click",()=>{
   if (sortKey===th.dataset.k) sortDir*=-1;
@@ -618,12 +612,13 @@ document.getElementById("reset").addEventListener("click",()=>{
   Object.keys(W).forEach(k=>{ document.getElementById("w_"+k).value=W[k]; document.getElementById("v_"+k).textContent=W[k]; });
   document.getElementById("budget").value=250; document.getElementById("maxmin").value=240;
   document.querySelectorAll(".req").forEach(c=>c.checked=false);
+  document.querySelectorAll(".star").forEach(c=>c.checked = c.dataset.v!=="5");
   document.getElementById("reqNordica").checked=false;
   save(); render();
 });
 
 function save(){ try{ localStorage.setItem("fh_taa_v2", JSON.stringify({
-  W, budget:budget.value, maxmin:maxmin.value, fz:fzona.value, fb:fbudget.value, fs:fstelle.value, fst:fstato.value, fl:fliv.value,
+  W, budget:budget.value, maxmin:maxmin.value, fz:fzona.value, fb:fbudget.value, stars:[...document.querySelectorAll(".star")].map(c=>c.checked), fst:fstato.value, fl:fliv.value,
   reqs:[...document.querySelectorAll(".req")].map(c=>c.checked), reqN:reqNordica.checked,
   sel:[...selected], dArr:dArr.value, dPar:dPar.value, nAd:nAd.value, nBa:nBa.value, etaBa:etaBa.value, tratt:tratt.value
 })); }catch(e){} }
@@ -632,7 +627,7 @@ function load(){ try{
   W={...DEFAULT_W,...s.W};
   Object.keys(W).forEach(k=>{ document.getElementById("w_"+k).value=W[k]; document.getElementById("v_"+k).textContent=W[k]; });
   if(s.budget)budget.value=s.budget; if(s.maxmin)maxmin.value=s.maxmin;
-  if(s.fz)fzona.value=s.fz; if(s.fb)fbudget.value=s.fb; if(s.fs)fstelle.value=s.fs; if(s.fst)fstato.value=s.fst; if(s.fl!==undefined)fliv.value=s.fl;
+  if(s.fz)fzona.value=s.fz; if(s.fb)fbudget.value=s.fb; if(s.stars)document.querySelectorAll(".star").forEach((c,i)=>{ if(s.stars[i]!==undefined) c.checked=s.stars[i]; }); if(s.fst)fstato.value=s.fst; if(s.fl!==undefined)fliv.value=s.fl;
   if(s.reqs)document.querySelectorAll(".req").forEach((c,i)=>c.checked=!!s.reqs[i]);
   if(s.reqN)reqNordica.checked=true;
   (s.sel||[]).forEach(n=>selected.add(n));
@@ -649,7 +644,7 @@ document.getElementById("legend").innerHTML =
 
 document.getElementById("meta").innerHTML =
   "<b>Fonti:</b> consorzio Italy Family Hotels (tariffe minime dichiarate), consorzio My Family Hotel / Giocovacanza, Andalo for Family, portale family hotel Val Pusteria, FamilyGO, consorzio Familienhotels Südtirol, elenco tematico Family Hotels di trentino.com.<br>"+
-  "<b>Ultimo aggiornamento dati:</b> 11 agosto 2026 (sessione email: 12 indirizzi verificati sul sito ufficiale, 1 corretto, 1 smentito; 5 strutture nuove dall'Alto Adige).";
+  "<b>Ultimo aggiornamento dati:</b> 12 agosto 2026 (recupero arretrato: 20 strutture portate a valutata dai siti ufficiali, 19 email confermate, 20 URL ufficiali aggiunti, 7 strutture abbandonate perché il sito è in JavaScript).";
 
 load(); document.getElementById("mailBody").value=buildBody(); render();
 
