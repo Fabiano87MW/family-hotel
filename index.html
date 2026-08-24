@@ -102,6 +102,7 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
   td[data-l]::before{ content:attr(data-l) " "; font-size:10.5px; text-transform:uppercase; letter-spacing:.4px; color:#9b9488; font-weight:600; margin-right:4px; }
   .note{ max-width:none; } .bar{ width:100%; }
   #editor{ right:8px; left:8px; width:auto; bottom:8px; max-height:72vh; }
+  .mailgrid{ grid-template-columns:1fr 1fr; }
   select,input[type=text],input[type=number],input[type=date],textarea{ font-size:16px; }
 }
 </style>
@@ -116,8 +117,9 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
   <h2><span>I tuoi pesi — sposta i cursori e la classifica si ricalcola</span><button class="btn" id="reset">Ripristina</button></h2>
   <div class="grid" id="weights"></div>
   <div style="margin-top:13px; display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
-    <label class="chk">Budget max famiglia/notte <input type="number" id="budget" value="250" min="100" max="900" step="10" style="width:75px"> €</label>
-    <label class="chk">Viaggio max <input type="number" id="maxmin" value="240" min="60" max="400" step="15" style="width:65px"> min</label>
+    <label class="chk">Budget famiglia/notte da <input type="number" id="bmin" value="0" min="0" max="2000" step="10" style="width:70px"> €
+      a <input type="number" id="bmax" value="250" min="0" max="3000" step="10" style="width:80px"> €</label>
+    <label class="chk">Viaggio max <input type="number" id="maxmin" value="240" min="30" max="600" step="15" style="width:70px"> min</label>
   </div>
 </div>
 
@@ -125,24 +127,19 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
   <h2>Filtri</h2>
   <div class="filters">
     <select id="fzona"></select>
-    <select id="fbudget">
-      <option value="in">Solo entro budget</option>
-      <option value="near" selected>Entro budget +30%</option>
-      <option value="all">Tutti</option>
-    </select>
+    <span style="font-size:11.5px;color:#8a8378">Parto da:</span>
+    <select id="forig"></select>
     <span style="font-size:11.5px;color:#8a8378;margin-left:4px">Categoria:</span>
-    <label class="chk"><input type="checkbox" class="star" data-v="3" checked> 3★</label>
-    <label class="chk"><input type="checkbox" class="star" data-v="3.5" checked> 3S</label>
-    <label class="chk"><input type="checkbox" class="star" data-v="4" checked> 4★</label>
-    <label class="chk"><input type="checkbox" class="star" data-v="4.5" checked> 4S</label>
-    <label class="chk"><input type="checkbox" class="star" data-v="5"> 5★</label>
-    <label class="chk"><input type="checkbox" class="star" data-v="nd" checked> n.d.</label>
+    <label class="chk"><input type="checkbox" class="star" data-v="3" checked> 3 stelle</label>
+    <label class="chk"><input type="checkbox" class="star" data-v="4" checked> 4 stelle</label>
+    <label class="chk"><input type="checkbox" class="star" data-v="5" checked> 5 stelle</label>
+    <label class="chk"><input type="checkbox" class="star" data-v="nd" checked> categoria n.d.</label>
     <select id="fliv">
-      <option value="nobase" selected>Escludi le tue BASE</option>
-      <option value="">Qualsiasi tuo giudizio</option>
+      <option value="" selected>Qualsiasi giudizio</option>
+      <option value="nobase">Escludi le BASE</option>
       <option value="topbello">Solo TOP e BELLO</option>
-      <option value="base">Solo le tue BASE</option>
-      <option value="none">Solo quelle senza tuo giudizio</option>
+      <option value="base">Solo le BASE</option>
+      <option value="none">Solo senza giudizio</option>
     </select>
     <select id="fstato">
       <option value="ok" selected>Solo strutture valutate</option>
@@ -158,7 +155,6 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
     <label class="chk"><input type="checkbox" class="req" data-r="miniclub"> Miniclub / animazione</label>
     <label class="chk"><input type="checkbox" class="req" data-r="attivita"> Programma attività</label>
     <label class="chk"><input type="checkbox" class="req" data-r="spa"> SPA</label>
-    <label class="chk"><input type="checkbox" id="reqNordica"> SPA nordica (anche solo probabile)</label>
   </div>
 </div>
 
@@ -178,13 +174,12 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
     <th data-k="stelle" class="num">Cat.</th>
     <th data-k="prezzoFam" class="num">Stima €/notte<br>famiglia 2+2</th>
     <th data-k="spa">SPA</th>
-    <th data-k="nordica">SPA<br>nordica</th>
     <th data-k="giochi">Giochi<br>interni</th>
     <th data-k="piscine">Piscine<br>interne</th>
     <th data-k="miniclub">Mini<br>club</th>
     <th data-k="attivita">Progr.<br>attività</th>
     <th data-k="cucina">Cucina</th>
-    <th data-k="liv">Tuo<br>giudizio</th>
+    <th data-k="liv">Giudizio</th>
     <th data-k="score" class="num">Punteggio</th>
     <th data-k="note">Note</th>
   </tr></thead>
@@ -196,15 +191,20 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
   <h2>Richiesta di preventivo agli hotel selezionati</h2>
   <div id="selinfo" class="selbox">Nessun hotel selezionato.</div>
   <div class="mailgrid">
+    <div><label>Il tuo nome e cognome</label><input type="text" id="mNome" placeholder="Mario Rossi"></div>
+    <div><label>La tua email</label><input type="text" id="mMail" placeholder="mario.rossi@email.it"></div>
+    <div><label>Telefono</label><input type="text" id="mTel" placeholder="facoltativo"></div>
     <div><label>Arrivo</label><input type="date" id="dArr"></div>
     <div><label>Partenza</label><input type="date" id="dPar"></div>
     <div><label>Adulti</label><input type="number" id="nAd" value="2" min="1" max="6"></div>
     <div><label>Bambini</label><input type="number" id="nBa" value="2" min="0" max="5"></div>
-    <div><label>Età bambini</label><input type="text" id="etaBa" value="8 e 10 anni"></div>
+    <div><label>Età bambini</label><input type="text" id="etaBa" placeholder="es. 8 e 10 anni"></div>
     <div><label>Trattamento</label><select id="tratt">
       <option>mezza pensione</option><option>pensione completa</option><option>all inclusive</option><option>indifferente</option></select></div>
   </div>
-  <label style="font-size:11.5px;color:#6f6a61;font-weight:500">Testo della richiesta</label>
+  <label style="font-size:11.5px;color:#6f6a61;font-weight:500">Richieste particolari (allergie, culla, camere comunicanti…)</label>
+  <textarea id="mExtra" rows="2" placeholder="Facoltativo: viene aggiunto alla richiesta"></textarea>
+  <label style="font-size:11.5px;color:#6f6a61;font-weight:500;margin-top:8px;display:block">Testo della richiesta</label>
   <textarea id="mailBody" rows="14"></textarea>
   <div style="margin-top:11px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
     <button class="btn primary" id="btnMail" disabled>Apri la mail con i selezionati in CCN</button>
@@ -233,17 +233,17 @@ async function boot(){
 const HOTELS = RAW.map(r => { const o={}; F.forEach((k,i)=>o[k]=r[i]); return o; });
 
 const CRIT = ["spa","nordica","giochi","piscine","miniclub","attivita","cucina"];
-const DEFAULT_W = { spa:12, nordica:10, giochi:15, piscine:18, miniclub:15, attivita:12, cucina:8, budget:20, viaggio:10 };
+const CRIT_SCORE = ["spa","giochi","piscine","miniclub","attivita","cucina"];
+const DEFAULT_W = { spa:16, giochi:16, piscine:20, miniclub:16, attivita:12, cucina:10, budget:20, viaggio:10 };
 const LABELS = {
   spa:      ["SPA","Area benessere per i genitori"],
-  nordica:  ["SPA nordica","Sauna dove il costume non è previsto"],
   giochi:   ["Area giochi interna","Sale gioco al coperto, per le giornate di pioggia"],
   piscine:  ["Piscine interne","Piscine coperte, scivoli, acquapark"],
   miniclub: ["Miniclub e animazione","Ore giornaliere, fasce d'età, personale"],
   attivita: ["Programma attività","Escursioni, laboratori, uscite organizzate"],
   cucina:   ["Cucina","Menù bimbi, orari, qualità e gestione allergie"],
   budget:   ["Rapporto col budget","Quanto la tariffa sta dentro il tuo tetto"],
-  viaggio:  ["Vicinanza da casa","Ore di auto da Castelli Calepio"]
+  viaggio:  ["Vicinanza da casa","Ore di auto dalla tua città di partenza"]
 };
 let W = {...DEFAULT_W};
 let sortKey="score", sortDir=-1;
@@ -255,6 +255,11 @@ try{ OVER=JSON.parse(localStorage.getItem('fh_taa_over')||'{}'); }catch(e){}
 try{ NEWH=JSON.parse(localStorage.getItem('fh_taa_new')||'[]'); }catch(e){}
 const saveNew=()=>{ try{ localStorage.setItem('fh_taa_new',JSON.stringify(NEWH)); }catch(e){} };
 function blank(){ const o={}; F.forEach(k=>o[k]=null); o.tratt='n.d.'; o.nordica=-1; o.note=''; return o; }
+function saveMitt(){ try{ localStorage.setItem("fh_taa_mitt",JSON.stringify(
+  {n:mNome.value,m:mMail.value,t:mTel.value,x:mExtra.value,ad:nAd.value,ba:nBa.value,eta:etaBa.value,tr:tratt.value})); }catch(e){} }
+function loadMitt(){ try{ const s=JSON.parse(localStorage.getItem("fh_taa_mitt")||"null"); if(!s) return;
+  if(s.n)mNome.value=s.n; if(s.m)mMail.value=s.m; if(s.t)mTel.value=s.t; if(s.x)mExtra.value=s.x;
+  if(s.ad)nAd.value=s.ad; if(s.ba)nBa.value=s.ba; if(s.eta)etaBa.value=s.eta; if(s.tr)tratt.value=s.tr; }catch(e){} }
 const saveOver=()=>{ try{ localStorage.setItem('fh_taa_over',JSON.stringify(OVER)); }catch(e){} };
 function LIVE(){
   const base=[...HOTELS.map(h=>{ const r=REPO_OVER[hkey(h)]; return r? {...h,...r,_rep:Object.keys(r)} : h; }),
@@ -263,6 +268,23 @@ function LIVE(){
   return base.map(h=>{ const o=OVER[hkey(h)];
     if(!o||!Object.keys(o).length) return h._rep? {...h,_lock:h._rep}:h;
     return {...h,...o,_mod:Object.keys(o),_lock:[...new Set([...(h._rep||[]),...Object.keys(o)])]}; });
+}
+const ORIGINI=[["Castelli Calepio (BG)",45.6167,9.8833],["Bergamo",45.6983,9.6773],["Milano",45.4642,9.1900],
+ ["Brescia",45.5416,10.2118],["Verona",45.4384,10.9916],["Trento",46.0679,11.1211],["Bolzano",46.4983,11.3548],
+ ["Padova",45.4064,11.8768],["Venezia",45.4408,12.3155],["Bologna",44.4949,11.3426],["Torino",45.0703,7.6869],
+ ["Genova",44.4056,8.9463],["Firenze",43.7696,11.2558],["Como",45.8081,9.0852],["Modena",44.6471,10.9252],
+ ["Parma",44.8015,10.3279],["Vicenza",45.5455,11.5354],["Udine",46.0711,13.2346],["Innsbruck (A)",47.2692,11.4041]];
+const MOD={a:63,b:0.7766};   /* minuti = a + b*km in linea d'aria, calibrato su 13 tratte reali */
+function kmAria(la1,lo1,la2,lo2){ const R=6371,p=Math.PI/180;
+  const dla=(la2-la1)*p, dlo=(lo2-lo1)*p;
+  const x=Math.sin(dla/2)**2+Math.cos(la1*p)*Math.cos(la2*p)*Math.sin(dlo/2)**2;
+  return 2*R*Math.asin(Math.sqrt(x)); }
+function origine(){ const s=document.getElementById("forig"); const i=s?+s.value:0; return ORIGINI[i]||ORIGINI[0]; }
+function minutiDi(h){
+  if (h.lat==null||h.lon==null) return h.minuti;
+  const o=origine();
+  if (o[0]==="Castelli Calepio (BG)" && h.minuti!=null) return h.minuti;   /* per Fabiano restano i tempi verificati */
+  return Math.round(MOD.a+MOD.b*kmAria(o[1],o[2],h.lat,h.lon));
 }
 const hkey = h => h.nome + " · " + h.loc;   // chiave univoca: esistono omonimi (es. due Hotel Erica)
 const famPrice = h => h.prezzo==null ? null : Math.round(h.prezzo*3);
@@ -289,12 +311,7 @@ function nordicaScore(v){ return v===2?5 : v===1?3.5 : v===0?0.5 : 2; }
 
 function score(h,budget,maxmin){
   let num=0, den=0;
-  CRIT.forEach(k=>{
-    let v;
-    if (k==="nordica") v = nordicaScore(h.nordica);
-    else { if (h[k]==null) return; v = h[k]; }
-    num += v*W[k]; den += W[k];
-  });
+  CRIT_SCORE.forEach(k=>{ if (h[k]==null) return; num += h[k]*W[k]; den += W[k]; });
   num += budgetScore(h,budget)*W.budget;  den += W.budget;
   num += travelScore(h,maxmin)*W.viaggio; den += W.viaggio;
   return den ? Math.round(num/den*20*10)/10 : 0;
@@ -315,19 +332,21 @@ const starTxt = s => s==null ? "—" : (s%1 ? Math.floor(s)+"S" : s+"") + "★";
 const hhmm = m => m==null ? "—" : Math.floor(m/60)+"h"+String(m%60).padStart(2,"0");
 
 function visibleRows(){
-  const budget = +document.getElementById("budget").value || 250;
+  const bmin = +document.getElementById("bmin").value || 0;
+  const bmax = +document.getElementById("bmax").value || 250;
+  const budget = bmax;
   const maxmin = +document.getElementById("maxmin").value || 240;
-  const fz=document.getElementById("fzona").value, fb=document.getElementById("fbudget").value;
-  const fst=document.getElementById("fstato").value;
-  const STARS=[...document.querySelectorAll(".star:checked")].map(c=>c.dataset.v);
+  const fz=document.getElementById("fzona").value, fst=document.getElementById("fstato").value;
   const q=document.getElementById("fsearch").value.trim().toLowerCase();
   const reqs=[...document.querySelectorAll(".req:checked")].map(c=>c.dataset.r);
-  const reqN=document.getElementById("reqNordica").checked;
+  const STARS=[...document.querySelectorAll(".star:checked")].map(c=>c.dataset.v);
 
-  return LIVE().map(h=>({...h, prezzoFam:famPrice(h), rated:isRated(h), score:score(h,budget,maxmin)}))
+  return LIVE().map(h=>({...h, minuti:minutiDi(h), prezzoFam:famPrice(h), rated:isRated(h)}))
+    .map(h=>({...h, score:score(h,budget,maxmin)}))
     .filter(h=>{
       if (fz && h.zona!==fz) return false;
-      if (STARS.length && !STARS.includes(h.stelle==null?"nd":String(h.stelle))) return false;
+      const cat = h.stelle==null ? "nd" : (h.stelle>=5 ? "5" : (h.stelle>=4 ? "4" : "3"));
+      if (STARS.length && !STARS.includes(cat)) return false;
       const fl=document.getElementById("fliv").value;
       if (fl==="nobase"  && h.liv==="BASE") return false;
       if (fl==="topbello"&& !["TOP","BELLO"].includes(h.liv)) return false;
@@ -335,9 +354,7 @@ function visibleRows(){
       if (fl==="none"    && h.liv) return false;
       if (fst==="ok" && !h.rated) return false;
       if (fst==="todo" && h.rated) return false;
-      if (fb==="in"   && h.prezzoFam!=null && h.prezzoFam>budget) return false;
-      if (fb==="near" && h.prezzoFam!=null && h.prezzoFam>budget*1.3) return false;
-      if (reqN && !(h.nordica>=1)) return false;
+      if (h.prezzoFam!=null && (h.prezzoFam<bmin || h.prezzoFam>bmax)) return false;
       for (const r of reqs) if (!(h[r]>=3)) return false;
       if (q && !(h.nome+" "+h.loc+" "+h.zona).toLowerCase().includes(q)) return false;
       return true;
@@ -472,8 +489,7 @@ function render(){
       <td data-l="Viaggio" class="num">${hhmm(h.minuti)}</td>
       <td data-l="Categoria" class="num">${starTxt(h.stelle)}</td>
       <td class="num">${p==null?"—":"≈ "+p+" €"}<br>${ptag}<span class="tag grey">${h.tratt}</span></td>
-      <td data-l="SPA">${dots(h.spa)}</td>
-      <td data-l="SPA nordica">${nordTag(h.nordica)}</td>
+      <td data-l="SPA">${dots(h.spa)} ${nordTag(h.nordica)}</td>
       <td data-l="Giochi interni">${dots(h.giochi)}</td>
       <td data-l="Piscine interne">${dots(h.piscine)}</td>
       <td data-l="Miniclub">${dots(h.miniclub)}</td>
@@ -486,7 +502,7 @@ function render(){
 
   const ALLH=LIVE(); const nRated=ALLH.filter(isRated).length;
   document.getElementById("count").innerHTML =
-    `<b>${rows.length}</b> strutture mostrate su ${ALLH.length} in catalogo (${nRated} valutate, ${ALLH.length-nRated} da valutare) · budget ${budget} €/notte famiglia · <b>${selected.size}</b> selezionate`;
+    `<b>${rows.length}</b> strutture su ${ALLH.length} · ${nRated} valutate · budget ${bmin}-${bmax} €/notte · partenza da ${origine()[0]} · <b>${selected.size}</b> selezionate`;
 
   document.querySelectorAll("th[data-k]").forEach(th=>{
     th.classList.remove("sorted","asc");
@@ -510,6 +526,10 @@ function buildBody(){
   const a=fmtDate(document.getElementById("dArr").value), p=fmtDate(document.getElementById("dPar").value);
   const ad=document.getElementById("nAd").value, ba=document.getElementById("nBa").value;
   const eta=document.getElementById("etaBa").value, tr=document.getElementById("tratt").value;
+  const nome=(document.getElementById("mNome").value||"").trim();
+  const mail=(document.getElementById("mMail").value||"").trim();
+  const tel=(document.getElementById("mTel").value||"").trim();
+  const extra=(document.getElementById("mExtra").value||"").trim();
   const per = a&&p ? `dal ${a} al ${p}` : "nel periodo che sto valutando (vi indico volentieri le date esatte)";
   return `Buongiorno,
 
@@ -527,11 +547,11 @@ Vi chiederei cortesemente:
 6. il programma delle attività ed escursioni previste nel periodo;
 7. come gestite i pasti dei bambini: menù dedicato, orari, gestione di eventuali intolleranze.
 
+${extra? "\n8. inoltre: "+extra+"\n" : ""}
 Resto in attesa di un vostro riscontro e vi ringrazio in anticipo.
 
 Cordiali saluti,
-Fabiano Chiari
-fabiano.chiari@gmail.com`;
+${nome||"[il tuo nome]"}${mail? "\n"+mail:""}${tel? "\nTel. "+tel:""}`;
 }
 const LIVCOL={TOP:"#2f6f4f",BELLO:"#3d7a99",MEDIO:"#96602a",BASE:"#8a8378"};
 function livTag(v){ return v ? `<span class="tag" style="background:${LIVCOL[v]}1a;color:${LIVCOL[v]}">${v}</span>` : '<span class="tag grey">—</span>'; }
@@ -559,8 +579,8 @@ function updateMail(){
     ? "Nessun destinatario utilizzabile: o mancano gli indirizzi, o sono tutti da confermare. Usa Copia elenco siti." : "";
 }
 document.getElementById("inclUnv").addEventListener("change",()=>{ updateMail(); });
-["dArr","dPar","nAd","nBa","etaBa","tratt"].forEach(id=>
-  document.getElementById(id).addEventListener("input",()=>{ document.getElementById("mailBody").value=buildBody(); save(); }));
+["dArr","dPar","nAd","nBa","etaBa","tratt","mNome","mMail","mTel","mExtra"].forEach(id=>
+  document.getElementById(id).addEventListener("input",()=>{ document.getElementById("mailBody").value=buildBody(); saveMitt(); }));
 
 document.getElementById("btnMail").addEventListener("click",()=>{
   const mails=mailRecipients().map(h=>h.email);
@@ -588,9 +608,10 @@ document.getElementById("weights").innerHTML = Object.keys(DEFAULT_W).map(k=>`
 Object.keys(DEFAULT_W).forEach(k=>document.getElementById("w_"+k).addEventListener("input",e=>{
   W[k]=+e.target.value; document.getElementById("v_"+k).textContent=e.target.value; save(); render(); }));
 
+document.getElementById("forig").innerHTML=ORIGINI.map((o,i)=>'<option value="'+i+'">'+o[0]+'</option>').join("");
 document.getElementById("fzona").innerHTML='<option value="">Tutte le zone</option>'+
   [...new Set(LIVE().map(h=>h.zona).filter(Boolean))].sort().map(z=>`<option>${z}</option>`).join("");
-["fzona","fbudget","fstato","fliv","fsearch","budget","maxmin","reqNordica"].forEach(id=>
+["fzona","fstato","fliv","fsearch","bmin","bmax","maxmin","forig"].forEach(id=>
   document.getElementById(id).addEventListener("input",()=>{ save(); render(); }));
 document.querySelectorAll(".req").forEach(c=>c.addEventListener("change",()=>{ save(); render(); }));
 document.querySelectorAll(".star").forEach(c=>c.addEventListener("change",()=>{ save(); render(); }));
@@ -610,26 +631,27 @@ document.getElementById("masterchk").addEventListener("change",e=>{
 document.getElementById("reset").addEventListener("click",()=>{
   W={...DEFAULT_W};
   Object.keys(W).forEach(k=>{ document.getElementById("w_"+k).value=W[k]; document.getElementById("v_"+k).textContent=W[k]; });
-  document.getElementById("budget").value=250; document.getElementById("maxmin").value=240;
+  bmin.value=0; bmax.value=250; maxmin.value=240; forig.value=0;
+  document.querySelectorAll(".star").forEach(c=>c.checked=true);
   document.querySelectorAll(".req").forEach(c=>c.checked=false);
-  document.querySelectorAll(".star").forEach(c=>c.checked = c.dataset.v!=="5");
-  document.getElementById("reqNordica").checked=false;
   save(); render();
 });
 
 function save(){ try{ localStorage.setItem("fh_taa_v2", JSON.stringify({
-  W, budget:budget.value, maxmin:maxmin.value, fz:fzona.value, fb:fbudget.value, stars:[...document.querySelectorAll(".star")].map(c=>c.checked), fst:fstato.value, fl:fliv.value,
-  reqs:[...document.querySelectorAll(".req")].map(c=>c.checked), reqN:reqNordica.checked,
+  W, bmin:bmin.value, bmax:bmax.value, maxmin:maxmin.value, orig:forig.value, fz:fzona.value, fst:fstato.value, fl:fliv.value,
+  stars:[...document.querySelectorAll(".star")].map(c=>c.checked),
+  reqs:[...document.querySelectorAll(".req")].map(c=>c.checked),
   sel:[...selected], dArr:dArr.value, dPar:dPar.value, nAd:nAd.value, nBa:nBa.value, etaBa:etaBa.value, tratt:tratt.value
 })); }catch(e){} }
 function load(){ try{
   const s=JSON.parse(localStorage.getItem("fh_taa_v2")||"null"); if(!s) return;
   W={...DEFAULT_W,...s.W};
   Object.keys(W).forEach(k=>{ document.getElementById("w_"+k).value=W[k]; document.getElementById("v_"+k).textContent=W[k]; });
-  if(s.budget)budget.value=s.budget; if(s.maxmin)maxmin.value=s.maxmin;
-  if(s.fz)fzona.value=s.fz; if(s.fb)fbudget.value=s.fb; if(s.stars)document.querySelectorAll(".star").forEach((c,i)=>{ if(s.stars[i]!==undefined) c.checked=s.stars[i]; }); if(s.fst)fstato.value=s.fst; if(s.fl!==undefined)fliv.value=s.fl;
+  if(s.bmin!==undefined)bmin.value=s.bmin; if(s.bmax)bmax.value=s.bmax; if(s.maxmin)maxmin.value=s.maxmin;
+  if(s.orig)forig.value=s.orig;
+  if(s.stars)document.querySelectorAll(".star").forEach((c,i)=>{ if(s.stars[i]!==undefined) c.checked=s.stars[i]; });
+  if(s.fz)fzona.value=s.fz; if(s.fst)fstato.value=s.fst; if(s.fl!==undefined)fliv.value=s.fl;
   if(s.reqs)document.querySelectorAll(".req").forEach((c,i)=>c.checked=!!s.reqs[i]);
-  if(s.reqN)reqNordica.checked=true;
   (s.sel||[]).forEach(n=>selected.add(n));
   if(s.dArr)dArr.value=s.dArr; if(s.dPar)dPar.value=s.dPar;
   if(s.nAd)nAd.value=s.nAd; if(s.nBa)nBa.value=s.nBa; if(s.etaBa)etaBa.value=s.etaBa; if(s.tratt)tratt.value=s.tratt;
@@ -644,9 +666,9 @@ document.getElementById("legend").innerHTML =
 
 document.getElementById("meta").innerHTML =
   "<b>Fonti:</b> consorzio Italy Family Hotels (tariffe minime dichiarate), consorzio My Family Hotel / Giocovacanza, Andalo for Family, portale family hotel Val Pusteria, FamilyGO, consorzio Familienhotels Südtirol, elenco tematico Family Hotels di trentino.com.<br>"+
-  "<b>Ultimo aggiornamento dati:</b> 12 agosto 2026 (recupero arretrato: 20 strutture portate a valutata dai siti ufficiali, 19 email confermate, 20 URL ufficiali aggiunti, 7 strutture abbandonate perché il sito è in JavaScript).";
+  "<b>Ultimo aggiornamento dati:</b> 24 agosto 2026 (recupero arretrato, secondo lotto: 13 BASE portate a valutata, 9 email lette sul sito ufficiale, 5 domini di sito diversi da quello dell email o dell url in catalogo, 3 localita corrette, 2 contraddizioni con le note di Fabiano segnalate, 1 probabile doppione segnalato; restano 89 BASE in coda).";
 
-load(); document.getElementById("mailBody").value=buildBody(); render();
+load(); loadMitt(); document.getElementById("mailBody").value=buildBody(); render();
 
 }
 fetch('data.json?v='+Date.now(),{cache:'no-store'})
