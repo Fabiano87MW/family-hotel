@@ -1,11 +1,11 @@
 {
- "aggiornato": "17 agosto 2026",
- "generato": "2026-08-17T19:11:56.388Z",
+ "aggiornato": "24 agosto 2026",
+ "generato": "2026-08-24T07:38:29.096Z",
  "statistiche": {
   "strutture": 235,
   "valutate": 122,
-  "email": 200,
-  "emailVerificate": 49
+  "email": 203,
+  "emailVerificate": 57
  },
  "fields": [
   "nome",
@@ -149,10 +149,10 @@
    3,
    3,
    150,
-   "Impostazione 'wellness for family', più orientata agli adulti · Email dal catalogo personale, da confermare sul sito",
+   "Impostazione 'wellness for family', più orientata agli adulti · Email dal catalogo personale, da confermare sul sito · Aggiornamento 24/08/2026: info@pizgalin.it letta sul sito ufficiale pizgalin.it (identita confermata: Via Dossi 1, Andalo). VERIFICATA. Offerte autunno 2026: Settembre 7=6 06-13/09, Settembre da Favola 13/09-04/10, Bike Family Week 20-27/09",
    "https://www.myfamilyhotel.it/it/hotel-per-bambini-trentino/grand-hotel-piz-galin/",
    "info@pizgalin.it",
-   0,
+   1,
    "MEDIO"
   ],
   [
@@ -223,7 +223,7 @@
    "Val di Sole e Pejo",
    "Dimaro-Folgarida",
    4,
-   73,
+   87,
    "MP",
    3,
    0,
@@ -233,10 +233,10 @@
    4,
    3,
    165,
-   "Miniclub 3-12 anni dalle 9.00 alle 21.30 tutti i giorni: copertura oraria rara",
+   "Miniclub 3-12 anni dalle 9.00 alle 21.30 tutti i giorni: copertura oraria rara · Aggiornamento 24/08/2026: indirizzo nuovo. info@alpholiday.it letta sulla pagina contatti del sito ufficiale alpholiday.it (identita confermata: Via Campiglio 4, Dimaro Folgarida, Hotel Group SpA). VERIFICATA. Listino ufficiale mezza pensione: minimo 87 euro/persona/giorno nei periodi 28/05-26/06 e 06/09-01/11/2026 (il campo prezzo passa da 73, non confermato, a 87). Alta stagione agosto 135. Stima 2+2 in settembre-ottobre ~260 euro/notte prima degli sconti bambini: dentro il tetto elastico",
    "https://www.myfamilyhotel.it/it/hotel-per-bambini-trentino/alpholiday-dolomiti/",
-   null,
-   null,
+   "info@alpholiday.it",
+   1,
    null
   ],
   [
@@ -663,7 +663,7 @@
    "Gardea Soulfamily Resort",
    "Garda e Ledro",
    "Garda trentino",
-   4,
+   5,
    null,
    "MP",
    4,
@@ -674,10 +674,10 @@
    3,
    3,
    105,
-   "Clima mite, ottimo per aprile-maggio e ottobre. Tariffa da verificare",
+   "Clima mite, ottimo per aprile-maggio e ottobre. Tariffa da verificare · Aggiornamento 24/08/2026: indirizzo nuovo. info@gardeahotel.com letta sul sito ufficiale gardeahotel.com (identita confermata: Via delle Busatte 60, Torbole sul Garda). VERIFICATA. La localita reale e Torbole sul Garda, non il generico \"Garda trentino\": il campo loc resta invariato per non cambiare la chiave nome+localita. Il sito dichiara 5 stelle, non 4: campo stelle corretto. 36 camere, 3 piscine, 350 m dal lago. Prezzi non pubblicati, prezzo resta null. Offerte autunno 2026 fitte: Its Family Time 4=3 e 5=4 dal 30/08 al 30/10, Gardea WOWeek 7=5 e 8=6 dal 13/09 al 30/10, Little Rangers 7=5 04-17/10, Dreaming the Lake -8% 24/08-30/10",
    "https://www.myfamilyhotel.it/it/hotel-per-bambini-trentino/gardea-soulfamily-resort/",
-   null,
-   null,
+   "info@gardeahotel.com",
+   1,
    null
   ],
   [
@@ -769,7 +769,7 @@
    "Alto Adige",
    "Valdaora",
    4.5,
-   100,
+   110,
    "MP",
    4,
    1,
@@ -779,10 +779,10 @@
    4,
    3,
    225,
-   "Plan de Corones. 13 offerte attive: struttura da tenere d'occhio · Nota di Fabiano: Recensioni molto constrastanti",
+   "Plan de Corones. 13 offerte attive: struttura da tenere d'occhio · Nota di Fabiano: Recensioni molto constrastanti · Aggiornamento 24/08/2026: info@fameli.it letta sul sito ufficiale fameli.it (identita confermata: famiglia Gasser, Via San Egidio 13, Valdaora). VERIFICATA. Listino ufficiale: minimo 110 euro/persona/giorno (Suite Basic), suite famiglia 115-154; il campo prezzo passa da 100 a 110. Offerte autunno 2026: Mid Week Special 20/09-01/10, Family Top Deal 12/09-04/10, Autunno 6=5 04-24/10, Family Premium Deal -10% 04-24/10",
    "https://www.italyfamilyhotels.it/it/hotel/hotel-fameli",
    "info@fameli.it",
-   0,
+   1,
    "BELLO"
   ],
   [
@@ -800,10 +800,10 @@
    4,
    4,
    185,
-   "Mini Club e Kids Club separati per fasce d'età, piscina bimbi riscaldata, escursioni organizzate",
+   "Mini Club e Kids Club separati per fasce d'età, piscina bimbi riscaldata, escursioni organizzate · Aggiornamento 24/08/2026: info@hotelgutenberg.eu letta sul sito ufficiale hotelgutenberg.eu (identita confermata: famiglia Ainhauser, Via Ifinger 14, Scena). VERIFICATA - il dominio era nel registro dei fetch falliti per redirect, ora risponde su /en/. Listino ufficiale mezza pensione plus: 119 euro/persona 11/04-13/05 e 17/05-23/05, 130 euro 12/09-03/10, 141 euro 03/10-01/11, minimo 110 in inverno. Sconto bimbi 6-11,9 anni: 46 euro (56 in alta stagione). Stima 2+2 in mezza stagione ~330 euro/notte: sopra il budget",
    "https://www.italyfamilyhotels.it/it/hotel/family-hotel-gutenberg",
    "info@hotelgutenberg.eu",
-   0,
+   1,
    "BELLO"
   ],
   [
@@ -947,10 +947,10 @@
    5,
    4,
    195,
-   "Piscina interna a tema poco profonda, baby club da 12 mesi, escursioni con forestali. Val Gardena cara",
+   "Piscina interna a tema poco profonda, baby club da 12 mesi, escursioni con forestali. Val Gardena cara · Aggiornamento 24/08/2026: info@biancaneve.it letta sul sito ufficiale biancaneve.it (identita confermata: famiglia Riffeser, Cir Str. 36, Selva Val Gardena). VERIFICATA. Kids Club dichiarato 13 ore al giorno da 3 anni, assistenza da 12 mesi: conferma il miniclub a 5",
    "https://www.biancaneve.it/it/",
    "info@biancaneve.it",
-   0,
+   1,
    "BELLO"
   ],
   [
@@ -1031,10 +1031,10 @@
    4,
    4,
    210,
-   "Aperto tutto l'anno. Fuori budget · Email dal catalogo personale, da confermare sul sito · Nota di Fabiano: Stupendo ma caro",
+   "Aperto tutto l'anno. Fuori budget · Email dal catalogo personale, da confermare sul sito · Nota di Fabiano: Stupendo ma caro · Aggiornamento 24/08/2026: info@hotelhuber.com letta sul sito ufficiale hotelhuber.com (identita confermata: Familienhotel Huber, Vals/Muehlbach = Valles/Rio di Pusteria, famiglia Stolz). VERIFICATA",
    "https://www.italyfamilyhotels.it/it/hotel/hotel-huber",
    "info@hotelhuber.com",
-   0,
+   1,
    "TOP"
   ],
   [
@@ -1073,7 +1073,7 @@
    4,
    4,
    210,
-   "Bergi-Land parco acquatico, SPA only adults con piscina a sfioro da 25 m. Tariffa da verificare. info@schneeberg.it compare nell'impressum di almina.it (stessa proprieta, Schneeberg Hotels SAS) ma non e stato letto su schneeberg.it: resta non verificata · Nota di Fabiano: Chiedere 4gg prima per sconto 20%",
+   "Bergi-Land parco acquatico, SPA only adults con piscina a sfioro da 25 m. Tariffa da verificare. info@schneeberg.it compare nell'impressum di almina.it (stessa proprieta, Schneeberg Hotels SAS) ma non e stato letto su schneeberg.it: resta non verificata · Nota di Fabiano: Chiedere 4gg prima per sconto 20% · Aggiornamento 24/08/2026: fetch di schneeberg.it/it/ ha restituito pagina vuota (sito in JavaScript). info@schneeberg.it resta corroborata ma NON verificata (emailv 0). Chiuso: non ritentare",
    "https://www.schneeberg.it",
    "info@schneeberg.it",
    0,
@@ -1472,10 +1472,10 @@
    5,
    5,
    195,
-   "Acqua Family Parc, 22 saune di cui alcune per famiglie, Action Park. Fuori profilo per budget",
+   "Acqua Family Parc, 22 saune di cui alcune per famiglie, Action Park. Fuori profilo per budget · Aggiornamento 24/08/2026: indirizzo nuovo. info@quellenhof.it letta in chiaro nel footer del sito ufficiale quellenhof.it (identita confermata: Via Passiria 45/47, San Martino in Passiria). VERIFICATA nonostante il sito sia Brandnamic: nel blocco indirizzo del footer l antispam non e applicato",
    "https://www.quellenhof.it",
-   null,
-   null,
+   "info@quellenhof.it",
+   1,
    "TOP"
   ],
   [
@@ -1514,7 +1514,7 @@
    5,
    5,
    185,
-   "Il family hotel per eccellenza, premiato 6 anni di fila. Costa quanto tre dei tuoi · Email dal catalogo personale, da confermare sul sito · Nota di Fabiano: top, caro",
+   "Il family hotel per eccellenza, premiato 6 anni di fila. Costa quanto tre dei tuoi · Email dal catalogo personale, da confermare sul sito · Nota di Fabiano: top, caro · Aggiornamento 24/08/2026: sito ufficiale cavallino-bianco.com scaricato e identita confermata (Via Rezia 22, Ortisei), ma l indirizzo e protetto da Cloudflare email-protection: non leggibile. info@cavallino-bianco.com resta NON verificata (emailv 0). Non ritentare via fetch",
    "https://www.cavallino-bianco.com/it/family-hotel-alto-adige",
    "info@cavallino-bianco.com",
    0,
@@ -2501,7 +2501,7 @@
    2,
    2,
    170,
-   "Dal catalogo personale di Fabiano · Fuori dal Trentino-Alto Adige · Aggiornamento 17/08/2026: valutata da schede ufficiali (Minor Hotels, italyfamilyhotels, valsesia.travel). ATTENZIONE: la struttura e stata rilevata dal gruppo Minor e oggi si chiama \"NH Collection Alagna Mirtillo Rosso\" - l'indirizzo info@mirtillo-rosso.com potrebbe non essere piu attivo, emailv resta 0. Quattro piscine tra cui una coperta, sauna, jacuzzi, bagno turco; spa adults-only e spa famiglia entrambe 10-20; kids club gratuito e parco giochi. Punti deboli: nessun programma di attivita organizzate dichiarato e informazioni sulla ristorazione ferme alla colazione a buffet. Resta fuori dal Trentino-Alto Adige (Alagna Valsesia, Piemonte)",
+   "Dal catalogo personale di Fabiano · Fuori dal Trentino-Alto Adige · Aggiornamento 17/08/2026: valutata da schede ufficiali (Minor Hotels, italyfamilyhotels, valsesia.travel). ATTENZIONE: la struttura e stata rilevata dal gruppo Minor e oggi si chiama \"NH Collection Alagna Mirtillo Rosso\" - l'indirizzo info@mirtillo-rosso.com potrebbe non essere piu attivo, emailv resta 0. Quattro piscine tra cui una coperta, sauna, jacuzzi, bagno turco; spa adults-only e spa famiglia entrambe 10-20; kids club gratuito e parco giochi. Punti deboli: nessun programma di attivita organizzate dichiarato e informazioni sulla ristorazione ferme alla colazione a buffet. Resta fuori dal Trentino-Alto Adige (Alagna Valsesia, Piemonte) · Aggiornamento 24/08/2026: promemoria - resta l unica riga con giudizio BELLO fuori dal Trentino-Alto Adige (Alagna Valsesia, Piemonte, zona \"Fuori regione\"). Non verificata in questa esecuzione",
    null,
    "info@mirtillo-rosso.com",
    0,
@@ -3803,9 +3803,9 @@
    3,
    5,
    150,
-   "Dal catalogo personale di Fabiano · Nota di Fabiano: Sala giochi ok, miniclub da verificare · URL ufficiale fornito da Fabiano il 12/08/2026. Il dominio e' cambiato: da pinetahotels.it a pinetanatureresort.it, quindi info@pinetahotels.it va riverificata. Sito interamente in JavaScript: pagina vuota sia sul root sia su /it/, criteri non estraibili via fetch · Aggiornamento 17/08/2026: parzialmente valutata da schede ufficiali (trentino.com, visitvaldinon, visittrentino): 4 stelle a Tavon-Coredo, comune di Predaia, Via al Santuario 17. Piscina coperta ed esterna a 35 gradi, sauna, centro beauty. Ristorante certificato \"Osteria Tipica Trentina\" dal 2003: il punto forte. Degustazioni in cantina e corsi di cucina con gli chef. Miniclub e area giochi interna non documentati, coerente con la nota di Fabiano (\"miniclub da verificare\"): restano da valutare. Email info@pinetahotels.it non riverificata sul nuovo dominio: emailv resta 0 · Recupero arretrato 17/08/2026: completata da schede terze (babytrekking, its4kids, hoteldeltrentino). MINICLUB 2, il punto debole: animazione per bambini 4-12 anni solo dalle 16 alle 19 e A PAGAMENTO, tre ore al giorno contro le 10+ dei family hotel veri. Sala giochi ampia ma SENZA personale fisso: giochi 3. Confermata anche la piscina bambini piu calda e due vasche coperte piu una esterna riscaldata (il campo piscine a 3 e forse prudente). Cucina bambini dedicata, coerente con il 5 gia in catalogo. La nota di Fabiano (\"miniclub da verificare\") era ben riposta: verificato, ed e deludente",
+   "Dal catalogo personale di Fabiano · Nota di Fabiano: Sala giochi ok, miniclub da verificare · URL ufficiale fornito da Fabiano il 12/08/2026. Il dominio e' cambiato: da pinetahotels.it a pinetanatureresort.it, quindi info@pinetahotels.it va riverificata. Sito interamente in JavaScript: pagina vuota sia sul root sia su /it/, criteri non estraibili via fetch · Aggiornamento 17/08/2026: parzialmente valutata da schede ufficiali (trentino.com, visitvaldinon, visittrentino): 4 stelle a Tavon-Coredo, comune di Predaia, Via al Santuario 17. Piscina coperta ed esterna a 35 gradi, sauna, centro beauty. Ristorante certificato \"Osteria Tipica Trentina\" dal 2003: il punto forte. Degustazioni in cantina e corsi di cucina con gli chef. Miniclub e area giochi interna non documentati, coerente con la nota di Fabiano (\"miniclub da verificare\"): restano da valutare. Email info@pinetahotels.it non riverificata sul nuovo dominio: emailv resta 0 · Recupero arretrato 17/08/2026: completata da schede terze (babytrekking, its4kids, hoteldeltrentino). MINICLUB 2, il punto debole: animazione per bambini 4-12 anni solo dalle 16 alle 19 e A PAGAMENTO, tre ore al giorno contro le 10+ dei family hotel veri. Sala giochi ampia ma SENZA personale fisso: giochi 3. Confermata anche la piscina bambini piu calda e due vasche coperte piu una esterna riscaldata (il campo piscine a 3 e forse prudente). Cucina bambini dedicata, coerente con il 5 gia in catalogo. La nota di Fabiano (\"miniclub da verificare\") era ben riposta: verificato, ed e deludente · Aggiornamento 24/08/2026: sito ufficiale raggiunto e identita confermata su pinetahotels.com (footer \"Copyright Pineta Nature Resort\", Via al Santuario 17, Tavon-Predaia). TERZO dominio in gioco: email su pinetanatureresort.it, url in catalogo pinetanatureresort.it, sito che risponde su pinetahotels.com. Nessun indirizzo in chiaro sulla pagina. Il vecchio info@pinetahotels.it e sul dominio abbandonato: sostituito con info@pinetanatureresort.it, che compare su piu schede terze, ma emailv resta 0 perche non letto su pagina ufficiale",
    "https://www.pinetanatureresort.it/it/",
-   "info@pinetahotels.it",
+   "info@pinetanatureresort.it",
    0,
    "MEDIO"
   ],
@@ -3929,7 +3929,7 @@
    3,
    4,
    195,
-   "Dal catalogo personale di Fabiano · Nota di Fabiano: Carissimo ma TOP · URL ufficiale fornito da Fabiano il 12/08/2026. Il gruppo ha cambiato dominio: da adler-dolomiti.com a adler-resorts.com, quindi info@adler-dolomiti.com potrebbe non essere piu' valida - da verificare. Sito interamente in JavaScript: pagina vuota sia sulla home sia sulla sottopagina, criteri non estraibili via fetch · Aggiornamento 17/08/2026: valutata da schede ufficiali e guide (Michelin, Travel Weekly, thedolomitesguide): 5 stelle, parco privato di 9.000 mq nel centro pedonale di Ortisei. Mondo spa da 3.500 mq con piu piscine coperte ed esterne, grotta di sale, idromassaggi. AKI Kids Club con assistenza tutti i giorni dalle 10 alle 22 (12 ore, il miniclub piu lungo del catalogo). Mezza pensione con gestione vegana, senza glutine e diete speciali. Noleggio bici incluso, parco giochi esterno. SPA NORDICA: esiste un'area sauna lago riservata agli adulti (finlandese e bio) affiancata da un mondo sauna \"AGUANA\" esplicitamente dichiarato textile per le famiglie. La distinzione suggerisce fortemente che l'area adulti sia textilfrei, ma la regola non e scritta: resta 1 (probabile), non 2. FUORI BUDGET: 5 stelle, tariffe ben oltre i 325 euro/notte anche in bassa stagione, campo prezzo lasciato null. Email info@adler-dolomiti.com non riverificata: il gruppo usa ora adler-resorts.com, emailv resta 0",
+   "Dal catalogo personale di Fabiano · Nota di Fabiano: Carissimo ma TOP · URL ufficiale fornito da Fabiano il 12/08/2026. Il gruppo ha cambiato dominio: da adler-dolomiti.com a adler-resorts.com, quindi info@adler-dolomiti.com potrebbe non essere piu' valida - da verificare. Sito interamente in JavaScript: pagina vuota sia sulla home sia sulla sottopagina, criteri non estraibili via fetch · Aggiornamento 17/08/2026: valutata da schede ufficiali e guide (Michelin, Travel Weekly, thedolomitesguide): 5 stelle, parco privato di 9.000 mq nel centro pedonale di Ortisei. Mondo spa da 3.500 mq con piu piscine coperte ed esterne, grotta di sale, idromassaggi. AKI Kids Club con assistenza tutti i giorni dalle 10 alle 22 (12 ore, il miniclub piu lungo del catalogo). Mezza pensione con gestione vegana, senza glutine e diete speciali. Noleggio bici incluso, parco giochi esterno. SPA NORDICA: esiste un'area sauna lago riservata agli adulti (finlandese e bio) affiancata da un mondo sauna \"AGUANA\" esplicitamente dichiarato textile per le famiglie. La distinzione suggerisce fortemente che l'area adulti sia textilfrei, ma la regola non e scritta: resta 1 (probabile), non 2. FUORI BUDGET: 5 stelle, tariffe ben oltre i 325 euro/notte anche in bassa stagione, campo prezzo lasciato null. Email info@adler-dolomiti.com non riverificata: il gruppo usa ora adler-resorts.com, emailv resta 0 · Aggiornamento 24/08/2026: secondo tentativo su adler-resorts.com (pagina Arrival) di nuovo vuoto, conferma che il sito e interamente in JavaScript. Divergenza di dominio confermata: email su adler-dolomiti.com, sito ufficiale su adler-resorts.com. emailv resta 0. Chiuso",
    "https://www.adler-resorts.com/it/hotel-resort/1-0.html",
    "info@adler-dolomiti.com",
    0,
