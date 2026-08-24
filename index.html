@@ -113,9 +113,9 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
 <div id="agg" style="font-size:11.5px;color:#8a8378;margin-bottom:10px">Caricamento…</div>
 
 <div class="panel">
-  <h2><span>I tuoi pesi — sposta i cursori e la classifica si ricalcola</span><button class="btn" id="reset">Ripristina</button></h2>
-  <div class="grid" id="weights"></div>
-  <div style="margin-top:13px; display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+  <h2><span><button class="btn" id="togglepesi" style="margin-right:8px;font-weight:700">▸</button>Pesi del punteggio — apri per regolare l'importanza dei criteri</span><button class="btn" id="reset">Ripristina</button></h2>
+  <div class="grid" id="weights" style="display:none"></div>
+  <div id="pesiextra" style="margin-top:13px; display:none; gap:14px; align-items:center; flex-wrap:wrap;">
     <label class="chk">Budget famiglia/notte da <input type="number" id="bmin" value="0" min="0" max="2000" step="10" style="width:70px"> €
       a <input type="number" id="bmax" value="250" min="0" max="3000" step="10" style="width:80px"> €</label>
     <label class="chk">Viaggio max <input type="number" id="maxmin" value="240" min="30" max="600" step="15" style="width:70px"> min</label>
@@ -470,7 +470,9 @@ function importOver(){
 }
 
 function render(){
-  const budget=+document.getElementById("budget").value||250;
+  const bmin=+document.getElementById("bmin").value||0;
+  const bmax=+document.getElementById("bmax").value||250;
+  const budget=bmax;
   const rows=visibleRows();
   document.getElementById("tbody").innerHTML = rows.map((h,i)=>{
     const p=h.prezzoFam;
@@ -627,6 +629,15 @@ document.getElementById("addnew").addEventListener("click",()=>openEditor(null))
 document.getElementById("selnone").addEventListener("click",()=>{ selected.clear(); save(); render(); });
 document.getElementById("masterchk").addEventListener("change",e=>{
   e.target.checked ? visibleRows().forEach(h=>selected.add(hkey(h))) : selected.clear(); save(); render(); });
+document.getElementById("togglepesi").addEventListener("click",()=>{
+  const g=document.getElementById("weights"), e=document.getElementById("pesiextra"), b=document.getElementById("togglepesi");
+  const apri = g.style.display==="none";
+  g.style.display = apri?"grid":"none";
+  e.style.display = apri?"flex":"none";
+  b.textContent = apri?"▾":"▸";
+  try{ localStorage.setItem("fh_taa_pesiaperti", apri?"1":"0"); }catch(x){}
+});
+if(localStorage.getItem("fh_taa_pesiaperti")==="1") document.getElementById("togglepesi").click();
 document.getElementById("reset").addEventListener("click",()=>{
   W={...DEFAULT_W};
   Object.keys(W).forEach(k=>{ document.getElementById("w_"+k).value=W[k]; document.getElementById("v_"+k).textContent=W[k]; });
