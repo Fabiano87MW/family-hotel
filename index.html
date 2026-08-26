@@ -116,8 +116,6 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
   <h2><span><button class="btn" id="togglepesi" style="margin-right:8px;font-weight:700">▸</button>Pesi del punteggio — apri per regolare l'importanza dei criteri</span><button class="btn" id="reset">Ripristina</button></h2>
   <div class="grid" id="weights" style="display:none"></div>
   <div id="pesiextra" style="margin-top:13px; display:none; gap:14px; align-items:center; flex-wrap:wrap;">
-    <label class="chk">Budget famiglia/notte da <input type="number" id="bmin" value="0" min="0" max="2000" step="10" style="width:70px"> €
-      a <input type="number" id="bmax" value="250" min="0" max="3000" step="10" style="width:80px"> €</label>
     <label class="chk">Viaggio max <input type="number" id="maxmin" value="240" min="30" max="600" step="15" style="width:70px"> min</label>
   </div>
 </div>
@@ -171,7 +169,6 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
     <th data-k="zona">Zona</th>
     <th data-k="minuti" class="num">Da Castelli<br>Calepio</th>
     <th data-k="stelle" class="num">Cat.</th>
-    <th data-k="prezzoFam" class="num">Stima €/notte<br>famiglia 2+2</th>
     <th data-k="spa">SPA</th>
     <th data-k="giochi">Giochi<br>interni</th>
     <th data-k="piscine">Piscine<br>interne</th>
@@ -234,7 +231,7 @@ const HOTELS = RAW.map(r => { const o={}; F.forEach((k,i)=>o[k]=r[i]); return o;
 
 const CRIT = ["spa","nordica","giochi","piscine","miniclub","attivita","cucina"];
 const CRIT_SCORE = ["spa","giochi","piscine","miniclub","attivita","cucina"];
-const DEFAULT_W = { spa:16, giochi:16, piscine:20, miniclub:16, attivita:12, cucina:10, budget:20, viaggio:10 };
+const DEFAULT_W = { piscine:22, giochi:18, miniclub:18, spa:16, attivita:14, cucina:12, viaggio:10 };
 const LABELS = {
   spa:      ["SPA","Area benessere per i genitori"],
   giochi:   ["Area giochi interna","Sale gioco al coperto, per le giornate di pioggia"],
@@ -242,7 +239,6 @@ const LABELS = {
   miniclub: ["Miniclub e animazione","Ore giornaliere, fasce d'età, personale"],
   attivita: ["Programma attività","Escursioni, laboratori, uscite organizzate"],
   cucina:   ["Cucina","Menù bimbi, orari, qualità e gestione allergie"],
-  budget:   ["Rapporto col budget","Quanto la tariffa rientra nell'intervallo impostato"],
   viaggio:  ["Vicinanza","Ore di auto dalla città di partenza scelta"]
 };
 let W = {...DEFAULT_W};
@@ -290,15 +286,6 @@ const hkey = h => h.nome + " · " + h.loc;   // chiave univoca: esistono omonimi
 const famPrice = h => h.prezzo==null ? null : Math.round(h.prezzo*3);
 const isRated  = h => CRIT.every(k => h[k] != null);
 
-function budgetScore(h,b){
-  const p = famPrice(h); if (p==null) return 2.5;
-  const r = p/b;
-  if (r<=0.75) return 5;
-  if (r<=1.00) return 5-(r-0.75)*4;
-  if (r<=1.25) return 4-(r-1.00)*8;
-  if (r<=1.60) return 2-(r-1.25)*4;
-  return Math.max(0, 0.6-(r-1.60));
-}
 function travelScore(h,maxm){
   if (h.minuti==null) return 2.5;
   const r = h.minuti/maxm;
@@ -309,10 +296,9 @@ function travelScore(h,maxm){
 }
 function nordicaScore(v){ return v===2?5 : v===1?3.5 : v===0?0.5 : 2; }
 
-function score(h,budget,maxmin){
+function score(h,maxmin){
   let num=0, den=0;
   CRIT_SCORE.forEach(k=>{ if (h[k]==null) return; num += h[k]*W[k]; den += W[k]; });
-  num += budgetScore(h,budget)*W.budget;  den += W.budget;
   num += travelScore(h,maxmin)*W.viaggio; den += W.viaggio;
   return den ? Math.round(num/den*20*10)/10 : 0;
 }
@@ -331,9 +317,6 @@ const starTxt = s => s==null ? "—" : (s%1 ? Math.floor(s)+"S" : s+"") + "★";
 const hhmm = m => m==null ? "—" : Math.floor(m/60)+"h"+String(m%60).padStart(2,"0");
 
 function visibleRows(){
-  const bmin = +document.getElementById("bmin").value || 0;
-  const bmax = +document.getElementById("bmax").value || 250;
-  const budget = bmax;
   const maxmin = +document.getElementById("maxmin").value || 240;
   const fz=document.getElementById("fzona").value, fst=document.getElementById("fstato").value;
   const q=document.getElementById("fsearch").value.trim().toLowerCase();
@@ -341,7 +324,7 @@ function visibleRows(){
   const STARS=[...document.querySelectorAll(".star:checked")].map(c=>c.dataset.v);
 
   return LIVE().map(h=>({...h, minuti:minutiDi(h), prezzoFam:famPrice(h), rated:isRated(h)}))
-    .map(h=>({...h, score:score(h,budget,maxmin)}))
+    .map(h=>({...h, score:score(h,maxmin)}))
     .filter(h=>{
       if (fz && h.zona!==fz) return false;
       const cat = h.stelle==null ? "nd" : (h.stelle>=5 ? "5" : (h.stelle>=4 ? "4" : "3"));
@@ -353,7 +336,6 @@ function visibleRows(){
       if (fl==="none"    && h.liv) return false;
       if (fst==="ok" && !h.rated) return false;
       if (fst==="todo" && h.rated) return false;
-      if (h.prezzoFam!=null && (h.prezzoFam<bmin || h.prezzoFam>bmax)) return false;
       for (const r of reqs) if (!(h[r]>=3)) return false;
       if (q && !(h.nome+" "+h.loc+" "+h.zona).toLowerCase().includes(q)) return false;
       return true;
@@ -470,16 +452,8 @@ function importOver(){
 }
 
 function render(){
-  const bmin=+document.getElementById("bmin").value||0;
-  const bmax=+document.getElementById("bmax").value||250;
-  const budget=bmax;
   const rows=visibleRows();
   document.getElementById("tbody").innerHTML = rows.map((h,i)=>{
-    const p=h.prezzoFam;
-    let ptag="";
-    if (p==null) ptag='<span class="tag warn">da verificare</span>';
-    else if (p>budget*1.3) ptag='<span class="tag bad">fuori budget</span>';
-    else if (p>budget) ptag='<span class="tag warn">sopra soglia</span>';
     const on=selected.has(hkey(h));
     return `<tr class="${on?"sel":""} ${h.rated?"":"todo"} ${(h._lock||h._add)?"mod":""} ${EXP.has(hkey(h))?"exp":""}">
       <td><input type="checkbox" class="rowchk" data-n="${hkey(h).replace(/"/g,"&quot;")}" ${on?"checked":""}></td>
@@ -489,7 +463,6 @@ function render(){
       <td data-l="Zona" class="loc">${h.zona}</td>
       <td data-l="Viaggio" class="num">${hhmm(h.minuti)}</td>
       <td data-l="Categoria" class="num">${starTxt(h.stelle)}</td>
-      <td class="num">${p==null?"—":"≈ "+p+" €"}<br>${ptag}<span class="tag grey">${h.tratt}</span></td>
       <td data-l="SPA">${dots(h.spa)} ${nordTag(h.nordica)}</td>
       <td data-l="Giochi interni">${dots(h.giochi)}</td>
       <td data-l="Piscine interne">${dots(h.piscine)}</td>
@@ -612,7 +585,7 @@ Object.keys(DEFAULT_W).forEach(k=>document.getElementById("w_"+k).addEventListen
 document.getElementById("forig").innerHTML=ORIGINI.map((o,i)=>'<option value="'+i+'">'+o[0]+'</option>').join("");
 document.getElementById("fzona").innerHTML='<option value="">Tutte le zone</option>'+
   [...new Set(LIVE().map(h=>h.zona).filter(Boolean))].sort().map(z=>`<option>${z}</option>`).join("");
-["fzona","fstato","fliv","fsearch","bmin","bmax","maxmin","forig"].forEach(id=>
+["fzona","fstato","fliv","fsearch","maxmin","forig"].forEach(id=>
   document.getElementById(id).addEventListener("input",()=>{ save(); render(); }));
 document.querySelectorAll(".req").forEach(c=>c.addEventListener("change",()=>{ save(); render(); }));
 document.querySelectorAll(".star").forEach(c=>c.addEventListener("change",()=>{ save(); render(); }));
@@ -641,14 +614,14 @@ if(localStorage.getItem("fh_taa_pesiaperti")==="1") document.getElementById("tog
 document.getElementById("reset").addEventListener("click",()=>{
   W={...DEFAULT_W};
   Object.keys(W).forEach(k=>{ document.getElementById("w_"+k).value=W[k]; document.getElementById("v_"+k).textContent=W[k]; });
-  bmin.value=0; bmax.value=250; maxmin.value=240; forig.value=0;
+  maxmin.value=240; forig.value=0;
   document.querySelectorAll(".star").forEach(c=>c.checked=true);
   document.querySelectorAll(".req").forEach(c=>c.checked=false);
   save(); render();
 });
 
 function save(){ try{ localStorage.setItem("fh_taa_v2", JSON.stringify({
-  W, bmin:bmin.value, bmax:bmax.value, maxmin:maxmin.value, orig:forig.value, fz:fzona.value, fst:fstato.value, fl:fliv.value,
+  W, maxmin:maxmin.value, orig:forig.value, fz:fzona.value, fst:fstato.value, fl:fliv.value,
   stars:[...document.querySelectorAll(".star")].map(c=>c.checked),
   reqs:[...document.querySelectorAll(".req")].map(c=>c.checked),
   sel:[...selected], dArr:dArr.value, dPar:dPar.value, nAd:nAd.value, nBa:nBa.value, etaBa:etaBa.value, tratt:tratt.value
@@ -657,7 +630,7 @@ function load(){ try{
   const s=JSON.parse(localStorage.getItem("fh_taa_v2")||"null"); if(!s) return;
   W={...DEFAULT_W,...s.W};
   Object.keys(W).forEach(k=>{ document.getElementById("w_"+k).value=W[k]; document.getElementById("v_"+k).textContent=W[k]; });
-  if(s.bmin!==undefined)bmin.value=s.bmin; if(s.bmax)bmax.value=s.bmax; if(s.maxmin)maxmin.value=s.maxmin;
+  if(s.maxmin)maxmin.value=s.maxmin;
   if(s.orig)forig.value=s.orig;
   if(s.stars)document.querySelectorAll(".star").forEach((c,i)=>{ if(s.stars[i]!==undefined) c.checked=s.stars[i]; });
   if(s.fz)fzona.value=s.fz; if(s.fst)fstato.value=s.fst; if(s.fl!==undefined)fliv.value=s.fl;
@@ -675,6 +648,7 @@ document.getElementById("legend").innerHTML =
   "<b>Tempi di percorrenza</b>: stime in auto da Castelli Calepio in condizioni normali, via A4-A22 oppure via Val Camonica per la Val di Sole. Non sono tempi calcolati da un servizio di navigazione.";
 
 document.getElementById("meta").innerHTML =
+  "<b>Sul prezzo:</b> il catalogo non lo mette in classifica. Un family hotel cambia tariffa del doppio fra aprile e agosto, quindi un numero solo sarebbe fuorviante metà dell'anno. Dove le fonti lo pubblicano lo trovi nella scheda e nelle note, ma il preventivo vero si chiede alla struttura: il testo della richiesta qui sopra lo domanda già.<br>"+
   "<b>Fonti:</b> consorzio Italy Family Hotels (tariffe minime dichiarate), consorzio My Family Hotel / Giocovacanza, Andalo for Family, portale family hotel Val Pusteria, FamilyGO, consorzio Familienhotels Südtirol, elenco tematico Family Hotels di trentino.com.<br>"+
   "<b>Ultimo aggiornamento dati:</b> 26 agosto 2026 (corsa email: 25 indirizzi verificati sul sito ufficiale, 4 corretti perche' sbagliati, 2 aggiunti come da confermare, 12 non verificabili (siti in JavaScript o senza email pubblicata), 1 probabile doppione segnalato (Cavallino Bianco / Weisses Roessl a San Candido); restano 73 da confermare e 21 senza indirizzo).";
 
