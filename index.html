@@ -92,6 +92,21 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
 .selbox { font-size:12px; background:#f6f9f7; border:1px solid #dde8e1; border-radius:8px; padding:9px 11px; margin-bottom:10px; }
 .warnbox { font-size:11.5px; background:#fdf6ec; border:1px solid #f0e0c6; border-radius:8px; padding:9px 11px; margin-bottom:10px; color:#7a5a2a; }
 .hidden { display:none; }
+.tabs{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:12px 0 4px; }
+.tab{ font:inherit; font-size:12.5px; padding:7px 13px; border-radius:20px; border:1px solid #e6e3dd;
+  background:#fff; cursor:pointer; color:#6f6a61; }
+.tab:hover{ background:#f6f4f0; }
+.tab.attiva{ background:#2f6f4f; border-color:#2f6f4f; color:#fff; font-weight:600; }
+.tab .n{ opacity:.7; font-size:11.5px; margin-left:3px; }
+.verd{ display:inline-flex; gap:2px; }
+.vb{ font-size:15px; line-height:1; padding:3px 5px; border:1px solid #e6e3dd; background:#fff;
+  border-radius:7px; cursor:pointer; filter:grayscale(1); opacity:.45; }
+.vb:hover{ opacity:.9; filter:none; background:#f6f4f0; }
+.vb.on{ opacity:1; filter:none; border-color:#2f6f4f; background:#eef4f0; }
+.motivo{ font-size:10.5px; color:#96602a; margin-top:3px; max-width:150px; line-height:1.35; }
+#toast{ position:fixed; left:50%; bottom:-60px; transform:translateX(-50%); background:#1f2421; color:#fff;
+  padding:9px 16px; border-radius:20px; font-size:13px; z-index:99; transition:bottom .25s; box-shadow:0 4px 16px rgba(0,0,0,.25); }
+#toast.mostra{ bottom:20px; }
 @media (max-width:760px){
   body{ padding:10px; font-size:14px; } h1{ font-size:18px; }
   .tablewrap{ border:0; background:transparent; max-height:none; overflow:visible; }
@@ -131,13 +146,6 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
     <label class="chk"><input type="checkbox" class="star" data-v="4" checked> 4 stelle</label>
     <label class="chk"><input type="checkbox" class="star" data-v="5" checked> 5 stelle</label>
     <label class="chk"><input type="checkbox" class="star" data-v="nd" checked> categoria n.d.</label>
-    <select id="fliv">
-      <option value="" selected>Qualsiasi giudizio</option>
-      <option value="nobase">Escludi le BASE</option>
-      <option value="topbello">Solo TOP e BELLO</option>
-      <option value="base">Solo le BASE</option>
-      <option value="none">Solo senza giudizio</option>
-    </select>
     <select id="fstato">
       <option value="ok" selected>Solo strutture valutate</option>
       <option value="all">Valutate + da valutare</option>
@@ -153,6 +161,14 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
     <label class="chk"><input type="checkbox" class="req" data-r="attivita"> Programma attività</label>
     <label class="chk"><input type="checkbox" class="req" data-r="spa"> SPA</label>
   </div>
+</div>
+
+<div class="tabs">
+  <button class="tab attiva" data-t="">Tutte <span class="n"></span></button>
+  <button class="tab" data-t="1">👍 Preferiti <span class="n"></span></button>
+  <button class="tab" data-t="0">❓ Da valutare <span class="n"></span></button>
+  <button class="tab" data-t="-1">👎 Scartati <span class="n"></span></button>
+  <span id="syncbadge" title="Stato della sincronizzazione"></span>
 </div>
 
 <div class="count">
@@ -175,7 +191,7 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
     <th data-k="miniclub">Mini<br>club</th>
     <th data-k="attivita">Progr.<br>attività</th>
     <th data-k="cucina">Cucina</th>
-    <th data-k="liv">Giudizio</th>
+    <th style="cursor:default">Giudizio</th>
     <th data-k="score" class="num">Punteggio</th>
     <th data-k="note">Note</th>
   </tr></thead>
@@ -249,14 +265,14 @@ let REPO_OVER={}, REPO_NEW=[];            /* provenienti da data.json, condivisi
 let OVER={}, NEWH=[];                      /* locali a questo dispositivo */
 try{ OVER=JSON.parse(localStorage.getItem('fh_taa_over')||'{}'); }catch(e){}
 try{ NEWH=JSON.parse(localStorage.getItem('fh_taa_new')||'[]'); }catch(e){}
-const saveNew=()=>{ try{ localStorage.setItem('fh_taa_new',JSON.stringify(NEWH)); }catch(e){} };
+const saveNew=()=>{ try{ localStorage.setItem('fh_taa_new',JSON.stringify(NEWH)); }catch(e){} salvaRamo(); };
 function blank(){ const o={}; F.forEach(k=>o[k]=null); o.tratt='n.d.'; o.nordica=-1; o.note=''; return o; }
 function saveMitt(){ try{ localStorage.setItem("fh_taa_mitt",JSON.stringify(
   {n:mNome.value,m:mMail.value,t:mTel.value,x:mExtra.value,ad:nAd.value,ba:nBa.value,eta:etaBa.value,tr:tratt.value})); }catch(e){} }
 function loadMitt(){ try{ const s=JSON.parse(localStorage.getItem("fh_taa_mitt")||"null"); if(!s) return;
   if(s.n)mNome.value=s.n; if(s.m)mMail.value=s.m; if(s.t)mTel.value=s.t; if(s.x)mExtra.value=s.x;
   if(s.ad)nAd.value=s.ad; if(s.ba)nBa.value=s.ba; if(s.eta)etaBa.value=s.eta; if(s.tr)tratt.value=s.tr; }catch(e){} }
-const saveOver=()=>{ try{ localStorage.setItem('fh_taa_over',JSON.stringify(OVER)); }catch(e){} };
+const saveOver=()=>{ try{ localStorage.setItem('fh_taa_over',JSON.stringify(OVER)); }catch(e){} salvaRamo(); };
 function LIVE(){
   const base=[...HOTELS.map(h=>{ const r=REPO_OVER[hkey(h)]; return r? {...h,...r,_rep:Object.keys(r)} : h; }),
               ...REPO_NEW.map(h=>({...h,_add:'condivisa'})),
@@ -329,11 +345,7 @@ function visibleRows(){
       if (fz && h.zona!==fz) return false;
       const cat = h.stelle==null ? "nd" : (h.stelle>=5 ? "5" : (h.stelle>=4 ? "4" : "3"));
       if (STARS.length && !STARS.includes(cat)) return false;
-      const fl=document.getElementById("fliv").value;
-      if (fl==="nobase"  && h.liv==="BASE") return false;
-      if (fl==="topbello"&& !["TOP","BELLO"].includes(h.liv)) return false;
-      if (fl==="base"    && h.liv!=="BASE") return false;
-      if (fl==="none"    && h.liv) return false;
+      if (TAB!=="" && String(verdOf(h).v) !== TAB) return false;
       if (fst==="ok" && !h.rated) return false;
       if (fst==="todo" && h.rated) return false;
       for (const r of reqs) if (!(h[r]>=3)) return false;
@@ -432,7 +444,7 @@ function openEditor(k){
 function closeEditor(){ const e=document.getElementById('editor'); if(e) e.remove(); }
 
 function overCount(){ return Object.keys(OVER).length + NEWH.length; }
-function pacchetto(){ return {esportato:new Date().toISOString(), modifiche:OVER, aggiunte:NEWH}; }
+function pacchetto(){ return {esportato:new Date().toISOString(), modifiche:OVER, aggiunte:NEWH, verdetti:VERD}; }
 function exportOver(){
   const txt=JSON.stringify(pacchetto(),null,1);
   navigator.clipboard.writeText(txt).then(()=>{
@@ -445,10 +457,83 @@ function importOver(){
   try{
     const d=JSON.parse(t);
     if(d.modifiche) Object.assign(OVER,d.modifiche);
+    if(d.verdetti){ Object.assign(VERD,d.verdetti); salvaRamo(); }
     if(Array.isArray(d.aggiunte)){ const k=new Set(NEWH.map(hkey)); d.aggiunte.forEach(a=>{ if(!k.has(hkey(a))) NEWH.push(a); }); }
     saveOver(); saveNew(); render();
     document.getElementById('overmsg').textContent='Importato.';
   }catch(e){ alert('Non è un pacchetto valido: '+e.message); }
+}
+
+/* ================= archivio condiviso ==================
+   Giudizi, modifiche e strutture aggiunte non stanno nel catalogo: vivono in un file
+   sul Drive di chi gestisce l'app, raggiunto tramite un piccolo programma Apps Script.
+   Così quello che scrive uno lo vedono tutti. Se l'indirizzo non è configurato o non
+   risponde, tutto continua a funzionare in locale su questo dispositivo. */
+const SYNC_URL = "https://script.google.com/macros/s/AKfycbw6j95HbLyG2OcdStn0E9VuVuOWAnW9pvlMB1p_-ZVegPQSBPd1gHUnBIHRuFjiKPqC/exec";            /* indirizzo /exec dell'app web di Apps Script */
+let VERD = {};                  /* giudizi: chiave -> {v:1|0|-1, m:"motivo"} */
+let SYNC = SYNC_URL ? "attesa" : "locale";
+let TAB = "";
+let PENDING = 0, ULTIMO = 0;
+
+const verdOf = h => VERD[hkey(h)] || {v:0};
+function verdBox(h){
+  const {v,m} = verdOf(h);
+  const k = hkey(h).replace(/"/g,"&quot;");
+  const b = (val,ico,tit) => `<button class="vb${v==val?" on":""}" data-v="${val}" data-k="${k}" title="${tit}">${ico}</button>`;
+  return `<span class="verd">${b(1,"👍","Preferito")}${b(0,"❓","Da valutare")}${b(-1,"👎","Scartato")}</span>`
+       + (v==-1 && m ? `<div class="motivo">${m}</div>` : "");
+}
+function badge(){
+  const e=document.getElementById("syncbadge"); if(!e) return;
+  const t={attesa:["· sincronizzo…","#8a8378"],ok:["· sincronizzato","#2f6f4f"],
+           salvo:["· salvo…","#8a8378"],
+           errore:["· archivio non raggiungibile, modifiche solo qui","#9d3b34"],
+           locale:["· archivio non configurato, modifiche solo su questo dispositivo","#96602a"]}[SYNC]||["",""];
+  e.textContent=t[0]; e.style.color=t[1]; e.style.fontSize="11px"; e.style.marginLeft="6px";
+}
+function toast(txt){
+  let t=document.getElementById("toast");
+  if(!t){ t=document.createElement("div"); t.id="toast"; document.body.appendChild(t); }
+  t.textContent=txt; t.className="mostra";
+  clearTimeout(t._h); t._h=setTimeout(()=>{ t.className=""; },1800);
+}
+async function scaricaCondiviso(silenzioso){
+  if(!SYNC_URL){ SYNC="locale"; badge(); return; }
+  if(PENDING>0) return;
+  try{
+    const r=await fetch(SYNC_URL+"?t="+Date.now(),{cache:"no-store"});
+    if(!r.ok) throw new Error(r.status);
+    const d=await r.json() || {};
+    if(PENDING>0) return;
+    VERD = d.verdetti || {};
+    OVER = d.modifiche || {};
+    NEWH = Array.isArray(d.aggiunte) ? d.aggiunte : [];
+    SYNC="ok"; badge();
+    if(!silenzioso) render();
+  }catch(e){ SYNC="errore"; badge(); }
+}
+/* Apps Script accetta un solo blocco: salvo tutto insieme, senza preflight CORS */
+let TIMER=null;
+function salvaRamo(){
+  if(!SYNC_URL){ SYNC="locale"; badge(); return; }
+  clearTimeout(TIMER);
+  TIMER=setTimeout(async ()=>{
+    PENDING++; SYNC="salvo"; badge();
+    try{
+      const r=await fetch(SYNC_URL,{method:"POST",
+        headers:{"Content-Type":"text/plain;charset=utf-8"},
+        body:JSON.stringify({verdetti:VERD,modifiche:OVER,aggiunte:NEWH})});
+      if(!r.ok) throw new Error(r.status);
+      SYNC="ok"; badge();
+    }catch(e){ SYNC="errore"; badge(); toast("Non sono riuscito a salvare online"); }
+    finally{ PENDING--; }
+  },600);        /* accorpo le modifiche ravvicinate in un solo salvataggio */
+}
+function setVerdetto(k,v,m){
+  if(v==0) delete VERD[k]; else VERD[k]={v:Number(v),...(m?{m}:{})};
+  render();
+  salvaRamo();
+  toast(v==1?"Aggiunto ai preferiti":v==-1?"Scartato":"Rimesso fra quelli da valutare");
 }
 
 function render(){
@@ -469,7 +554,7 @@ function render(){
       <td data-l="Miniclub">${dots(h.miniclub)}</td>
       <td data-l="Attività">${dots(h.attivita)}</td>
       <td data-l="Cucina">${dots(h.cucina)}</td>
-      <td>${livTag(h.liv)}${h._lock?` <span class="tag mod" title="Campi bloccati: ${h._lock.join(", ")}">bloccato</span>`:""}${h._add?` <span class="tag" style="background:#eaf3ee;color:#2f6f4f">aggiunta ${h._add}</span>`:""}</td>
+      <td>${verdBox(h)}${h._lock?` <span class="tag mod" title="Campi bloccati: ${h._lock.join(", ")}">bloccato</span>`:""}${h._add?` <span class="tag" style="background:#eaf3ee;color:#2f6f4f">aggiunta ${h._add}</span>`:""}</td>
       <td class="num"><span class="score">${h.score.toFixed(1)}</span><div class="bar"><i style="width:${h.score}%"></i></div></td>
       <td class="note"><div class="txt">${h.note||""}</div><div style="margin-top:3px;display:flex;gap:4px"><button class="more" data-k="${hkey(h).replace(/"/g,"&quot;")}">+</button><button class="edit" data-k="${hkey(h).replace(/"/g,"&quot;")}">modifica</button></div></td></tr>`;
   }).join("");
@@ -482,6 +567,18 @@ function render(){
     th.classList.remove("sorted","asc");
     if (th.dataset.k===sortKey) th.classList.add(sortDir===1?"asc":"sorted");
   });
+  document.querySelectorAll(".vb").forEach(b=>b.onclick=()=>{
+    const k=b.dataset.k, v=b.dataset.v;
+    if(v=="-1"){ const m=prompt("Perche' lo scarti? (facoltativo)", (VERD[k]&&VERD[k].m)||""); setVerdetto(k,-1,m?m.trim():""); }
+    else setVerdetto(k,v);
+  });
+  { const tutte=LIVE(), c={"":tutte.length,"1":0,"0":0,"-1":0};
+    tutte.forEach(x=>{ c[String(verdOf(x).v)]++; });
+    document.querySelectorAll(".tab").forEach(t=>{
+      t.classList.toggle("attiva", t.dataset.t===TAB);
+      t.querySelector(".n").textContent = c[t.dataset.t]!==undefined ? c[t.dataset.t] : "";
+    });
+  }
   document.querySelectorAll(".more").forEach(b=>b.onclick=()=>{ const k=b.dataset.k; EXP.has(k)?EXP.delete(k):EXP.add(k); render(); });
   document.querySelectorAll(".edit").forEach(b=>b.onclick=()=>openEditor(b.dataset.k));
   const om=document.getElementById("overmsg");
@@ -527,8 +624,6 @@ Resto in attesa di un vostro riscontro e vi ringrazio in anticipo.
 Cordiali saluti,
 ${nome||"[il tuo nome]"}${mail? "\n"+mail:""}${tel? "\nTel. "+tel:""}`;
 }
-const LIVCOL={TOP:"#2f6f4f",BELLO:"#3d7a99",MEDIO:"#96602a",BASE:"#8a8378"};
-function livTag(v){ return v ? `<span class="tag" style="background:${LIVCOL[v]}1a;color:${LIVCOL[v]}">${v}</span>` : '<span class="tag grey">—</span>'; }
 function mailTag(h){
   if (!h.email) return '<span class="tag bad">email assente</span>';
   return h.emailv===1 ? '<span class="tag">email verificata</span>'
@@ -585,7 +680,7 @@ Object.keys(DEFAULT_W).forEach(k=>document.getElementById("w_"+k).addEventListen
 document.getElementById("forig").innerHTML=ORIGINI.map((o,i)=>'<option value="'+i+'">'+o[0]+'</option>').join("");
 document.getElementById("fzona").innerHTML='<option value="">Tutte le zone</option>'+
   [...new Set(LIVE().map(h=>h.zona).filter(Boolean))].sort().map(z=>`<option>${z}</option>`).join("");
-["fzona","fstato","fliv","fsearch","maxmin","forig"].forEach(id=>
+["fzona","fstato","fsearch","maxmin","forig"].forEach(id=>
   document.getElementById(id).addEventListener("input",()=>{ save(); render(); }));
 document.querySelectorAll(".req").forEach(c=>c.addEventListener("change",()=>{ save(); render(); }));
 document.querySelectorAll(".star").forEach(c=>c.addEventListener("change",()=>{ save(); render(); }));
@@ -596,6 +691,7 @@ document.querySelectorAll("th[data-k]").forEach(th=>th.addEventListener("click",
   render();
 }));
 document.getElementById("selall").addEventListener("click",()=>{ visibleRows().forEach(h=>selected.add(hkey(h))); save(); render(); });
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{ TAB=t.dataset.t; save(); render(); }));
 document.getElementById("expover").addEventListener("click",exportOver);
 document.getElementById("impover").addEventListener("click",importOver);
 document.getElementById("addnew").addEventListener("click",()=>openEditor(null));
@@ -621,7 +717,7 @@ document.getElementById("reset").addEventListener("click",()=>{
 });
 
 function save(){ try{ localStorage.setItem("fh_taa_v2", JSON.stringify({
-  W, maxmin:maxmin.value, orig:forig.value, fz:fzona.value, fst:fstato.value, fl:fliv.value,
+  W, maxmin:maxmin.value, orig:forig.value, fz:fzona.value, fst:fstato.value, tab:TAB,
   stars:[...document.querySelectorAll(".star")].map(c=>c.checked),
   reqs:[...document.querySelectorAll(".req")].map(c=>c.checked),
   sel:[...selected], dArr:dArr.value, dPar:dPar.value, nAd:nAd.value, nBa:nBa.value, etaBa:etaBa.value, tratt:tratt.value
@@ -633,7 +729,7 @@ function load(){ try{
   if(s.maxmin)maxmin.value=s.maxmin;
   if(s.orig)forig.value=s.orig;
   if(s.stars)document.querySelectorAll(".star").forEach((c,i)=>{ if(s.stars[i]!==undefined) c.checked=s.stars[i]; });
-  if(s.fz)fzona.value=s.fz; if(s.fst)fstato.value=s.fst; if(s.fl!==undefined)fliv.value=s.fl;
+  if(s.fz)fzona.value=s.fz; if(s.fst)fstato.value=s.fst; if(s.tab!==undefined)TAB=s.tab;
   if(s.reqs)document.querySelectorAll(".req").forEach((c,i)=>c.checked=!!s.reqs[i]);
   (s.sel||[]).forEach(n=>selected.add(n));
   if(s.dArr)dArr.value=s.dArr; if(s.dPar)dPar.value=s.dPar;
@@ -652,7 +748,10 @@ document.getElementById("meta").innerHTML =
   "<b>Fonti:</b> consorzio Italy Family Hotels (tariffe minime dichiarate), consorzio My Family Hotel / Giocovacanza, Andalo for Family, portale family hotel Val Pusteria, FamilyGO, consorzio Familienhotels Südtirol, elenco tematico Family Hotels di trentino.com.<br>"+
   "<b>Ultimo aggiornamento dati:</b> 26 agosto 2026 (corsa email: 25 indirizzi verificati sul sito ufficiale, 4 corretti perche' sbagliati, 2 aggiunti come da confermare, 12 non verificabili (siti in JavaScript o senza email pubblicata), 1 probabile doppione segnalato (Cavallino Bianco / Weisses Roessl a San Candido); restano 73 da confermare e 21 senza indirizzo).";
 
-load(); loadMitt(); document.getElementById("mailBody").value=buildBody(); render();
+load(); loadMitt(); document.getElementById("mailBody").value=buildBody(); render(); badge();
+scaricaCondiviso();
+setInterval(()=>scaricaCondiviso(),25000);
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) scaricaCondiviso(); });
 
 }
 fetch('data.json?v='+Date.now(),{cache:'no-store'})
