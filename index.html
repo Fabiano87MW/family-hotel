@@ -229,6 +229,7 @@ async function boot(){
    miniclub, attivita, cucina, minuti(auto da Castelli Calepio), note, url, email
    nordica: 2=confermato  1=probabile  0=costume obbligatorio  -1=non verificato
    valutazioni 0-5, null = dato mancante                                                        */
+
 const HOTELS = RAW.map(r => { const o={}; F.forEach((k,i)=>o[k]=r[i]); return o; });
 
 const CRIT = ["spa","nordica","giochi","piscine","miniclub","attivita","cucina"];
@@ -241,8 +242,8 @@ const LABELS = {
   miniclub: ["Miniclub e animazione","Ore giornaliere, fasce d'età, personale"],
   attivita: ["Programma attività","Escursioni, laboratori, uscite organizzate"],
   cucina:   ["Cucina","Menù bimbi, orari, qualità e gestione allergie"],
-  budget:   ["Rapporto col budget","Quanto la tariffa sta dentro il tuo tetto"],
-  viaggio:  ["Vicinanza da casa","Ore di auto dalla tua città di partenza"]
+  budget:   ["Rapporto col budget","Quanto la tariffa rientra nell'intervallo impostato"],
+  viaggio:  ["Vicinanza","Ore di auto dalla città di partenza scelta"]
 };
 let W = {...DEFAULT_W};
 let sortKey="score", sortDir=-1;
@@ -282,7 +283,7 @@ function origine(){ const s=document.getElementById("forig"); const i=s?+s.value
 function minutiDi(h){
   if (h.lat==null||h.lon==null) return h.minuti;
   const o=origine();
-  if (o[0]==="Castelli Calepio (BG)" && h.minuti!=null) return h.minuti;   /* per Fabiano restano i tempi verificati */
+  if (o[0]==="Castelli Calepio (BG)" && h.minuti!=null) return h.minuti;   /* per la partenza predefinita restano i tempi verificati */
   return Math.round(MOD.a+MOD.b*kmAria(o[1],o[2],h.lat,h.lon));
 }
 const hkey = h => h.nome + " · " + h.loc;   // chiave univoca: esistono omonimi (es. due Hotel Erica)
@@ -366,8 +367,8 @@ function visibleRows(){
 }
 
 
-/* ================= modifiche e aggiunte di Fabiano =================
-   Regola: quello che scrive Fabiano è definitivo. I campi che tocca
+/* ================= modifiche e aggiunte dell'utente =================
+   Regola: quello che scrive l'utente è definitivo. I campi che tocca
    restano bloccati e non vengono più sovrascritti da nessun aggiornamento. */
 const EXP=new Set();
 const NORD=[[2,'confermata'],[1,'probabile'],[0,'improbabile'],[-1,'non verificato']];
@@ -502,7 +503,7 @@ function render(){
 
   const ALLH=LIVE(); const nRated=ALLH.filter(isRated).length;
   document.getElementById("count").innerHTML =
-    `<b>${rows.length}</b> strutture su ${ALLH.length} · ${nRated} valutate · budget ${bmin}-${bmax} €/notte · partenza da ${origine()[0]} · <b>${selected.size}</b> selezionate`;
+    `<b>${rows.length}</b> strutture su ${ALLH.length} · ${nRated} valutate · partenza da ${origine()[0]} · <b>${selected.size}</b> selezionate`;
 
   document.querySelectorAll("th[data-k]").forEach(th=>{
     th.classList.remove("sorted","asc");
@@ -675,7 +676,7 @@ document.getElementById("legend").innerHTML =
 
 document.getElementById("meta").innerHTML =
   "<b>Fonti:</b> consorzio Italy Family Hotels (tariffe minime dichiarate), consorzio My Family Hotel / Giocovacanza, Andalo for Family, portale family hotel Val Pusteria, FamilyGO, consorzio Familienhotels Südtirol, elenco tematico Family Hotels di trentino.com.<br>"+
-  "<b>Ultimo aggiornamento dati:</b> 25 agosto 2026 (recupero arretrato, quinto lotto: 21 strutture portate da BASE a valutata, 8 localita o zone corrette perche il sito ufficiale le colloca altrove, 4 nomi corretti, 19 email verificate sul sito ufficiale; nessuna nuova etichetta sauna, nessuna dichiarata; restano 20 strutture in coda).";
+  "<b>Ultimo aggiornamento dati:</b> 26 agosto 2026 (corsa email: 25 indirizzi verificati sul sito ufficiale, 4 corretti perche' sbagliati, 2 aggiunti come da confermare, 12 non verificabili (siti in JavaScript o senza email pubblicata), 1 probabile doppione segnalato (Cavallino Bianco / Weisses Roessl a San Candido); restano 73 da confermare e 21 senza indirizzo).";
 
 load(); loadMitt(); document.getElementById("mailBody").value=buildBody(); render();
 
