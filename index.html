@@ -244,6 +244,7 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
   <textarea id="mailBody" rows="14"></textarea>
   <div style="margin-top:11px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
     <button class="btn primary" id="btnMail" disabled>Apri la mail con i selezionati in CCN</button>
+    <div id="ascolto" style="margin-top:8px;font-size:11.5px"></div>
     <label class="chk"><input type="checkbox" id="inclUnv" checked> includi anche gli indirizzi da confermare (se sbagliati, il messaggio torna indietro e la scheda si segna da sola)</label>
     <button class="btn" id="btnCopyMails">Copia indirizzi</button>
     <button class="btn" id="btnCopyBody">Copia testo</button>
@@ -513,6 +514,7 @@ let VERD = {};                  /* giudizi: chiave -> {v:1|0|-1, m:"motivo"} */
 let RISP = {};                  /* risposte via Gmail: chiave -> {da,data,oggetto,testo,link,prezzi[]} */
 let COSTI = {};                 /* preventivi confermati: chiave -> {tot,notti,ad,ba,periodo,nota} */
 let RIMB = {};                  /* indirizzi rimbalzati: chiave -> {indirizzo,motivo,data} */
+let ASC = null;                 /* finestra di ascolto della posta: {da,fino} oppure null */
 let SYNC = SYNC_URL ? "attesa" : "locale";
 let TAB = "";
 let PENDING = 0, ULTIMO = 0;
@@ -564,7 +566,8 @@ async function scaricaCondiviso(silenzioso){
     RISP = d.risposte || {};
     COSTI = d.costi || {};
     RIMB = d.rimbalzi || {};
-    SYNC="ok"; badge();
+    ASC = d.ascolto || null;
+    SYNC="ok"; badge(); mostraAscolto();
     if(!silenzioso) render();
   }catch(e){ SYNC="errore"; badge(); }
 }
@@ -780,12 +783,37 @@ document.getElementById("inclUnv").addEventListener("change",()=>{ updateMail();
 ["dArr","dPar","nAd","nBa","etaBa","tratt","mNome","mMail","mTel","mExtra"].forEach(id=>
   document.getElementById(id).addEventListener("input",()=>{ document.getElementById("mailBody").value=buildBody(); saveMitt(); }));
 
+/* La posta viene letta solo dopo un invio, e per pochi giorni: qui si apre la finestra.
+   Fuori da quella finestra sul lato Google non esiste nessun controllo programmato. */
+async function apriAscolto(){
+  if(!SYNC_URL) return;
+  try{
+    const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({avviaAscolto:true})});
+    const d=await r.json();
+    ASC = d.ascolto || null;
+    mostraAscolto();
+  }catch(e){ document.getElementById("mailmsg").textContent=
+    "Richieste aperte nel programma di posta, ma non sono riuscito ad avvisare il lettore delle risposte: riprova più tardi."; }
+}
+function mostraAscolto(){
+  const el=document.getElementById("ascolto"); if(!el) return;
+  if(ASC && new Date() <= new Date(ASC.fino)){
+    const f=new Date(ASC.fino);
+    el.innerHTML=`<span class="tag">in ascolto delle risposte fino al ${String(f.getDate()).padStart(2,"0")}/${String(f.getMonth()+1).padStart(2,"0")}</span> `+
+      `<span style="color:#8a8378">solo i messaggi arrivati dopo l'invio, un controllo ogni ora.</span>`;
+  } else {
+    el.innerHTML=`<span class="tag grey">nessun ascolto attivo</span> `+
+      `<span style="color:#8a8378">la casella non viene letta. Si accende da sola quando mandi le richieste.</span>`;
+  }
+}
 document.getElementById("btnMail").addEventListener("click",()=>{
   const mails=mailRecipients().map(h=>h.email);
   const url=`mailto:?bcc=${encodeURIComponent(mails.join(","))}`+
     `&subject=${encodeURIComponent("Richiesta preventivo vacanza in famiglia [FH]")}`+
     `&body=${encodeURIComponent(document.getElementById("mailBody").value)}`;
   if (url.length>1900) document.getElementById("mailmsg").textContent="Attenzione: link molto lungo, alcuni client potrebbero troncarlo. In caso, usa i pulsanti di copia.";
+  apriAscolto();
   window.location.href=url;
 });
 function copy(txt,msg){
