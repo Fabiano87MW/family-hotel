@@ -107,6 +107,16 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
 #toast{ position:fixed; left:50%; bottom:-60px; transform:translateX(-50%); background:#1f2421; color:#fff;
   padding:9px 16px; border-radius:20px; font-size:13px; z-index:99; transition:bottom .25s; box-shadow:0 4px 16px rgba(0,0,0,.25); }
 #toast.mostra{ bottom:20px; }
+.risp{ font-size:14px; border:1px solid #d8d3ca; background:#fff; border-radius:7px;
+  padding:2px 6px; cursor:pointer; margin-left:4px; }
+.risp:hover{ background:#eef4f0; border-color:#2f6f4f; }
+.costo{ font-size:10.5px; color:#2f6f4f; font-weight:600; margin-top:3px; }
+.mailtxt{ font-size:11.5px; line-height:1.5; background:#faf9f7; border:1px solid #ece9e3;
+  border-radius:8px; padding:8px 10px; max-height:190px; overflow:auto; white-space:pre-wrap; }
+.chips{ display:flex; gap:5px; flex-wrap:wrap; margin-top:3px; }
+.chip{ font-size:12px; padding:3px 9px; border-radius:14px; border:1px solid #d8d3ca;
+  background:#fff; cursor:pointer; }
+.chip:hover{ background:#eef4f0; border-color:#2f6f4f; }
 @media (max-width:760px){
   body{ padding:10px; font-size:14px; } h1{ font-size:18px; }
   .tablewrap{ border:0; background:transparent; max-height:none; overflow:visible; }
@@ -471,6 +481,8 @@ function importOver(){
    risponde, tutto continua a funzionare in locale su questo dispositivo. */
 const SYNC_URL = "https://script.google.com/macros/s/AKfycbw6j95HbLyG2OcdStn0E9VuVuOWAnW9pvlMB1p_-ZVegPQSBPd1gHUnBIHRuFjiKPqC/exec";            /* indirizzo /exec dell'app web di Apps Script */
 let VERD = {};                  /* giudizi: chiave -> {v:1|0|-1, m:"motivo"} */
+let RISP = {};                  /* risposte via Gmail: chiave -> {da,data,oggetto,testo,link,prezzi[]} */
+let COSTI = {};                 /* preventivi confermati: chiave -> {tot,notti,ad,ba,periodo,nota} */
 let SYNC = SYNC_URL ? "attesa" : "locale";
 let TAB = "";
 let PENDING = 0, ULTIMO = 0;
@@ -480,7 +492,12 @@ function verdBox(h){
   const {v,m} = verdOf(h);
   const k = hkey(h).replace(/"/g,"&quot;");
   const b = (val,ico,tit) => `<button class="vb${v==val?" on":""}" data-v="${val}" data-k="${k}" title="${tit}">${ico}</button>`;
-  return `<span class="verd">${b(1,"👍","Preferito")}${b(0,"❓","Da valutare")}${b(-1,"👎","Scartato")}</span>`
+  const k2=hkey(h);
+  const r=RISP[k2], c=COSTI[k2];
+  let extra="";
+  if(r) extra+=`<button class="risp" data-k="${k}" title="Ha risposto il ${r.data||""}">📨</button>`;
+  if(c && c.tot && c.notti) extra+=`<div class="costo">≈ ${Math.round(c.tot/c.notti)} €/notte · ${c.ad||"?"}+${c.ba||"?"} · ${c.periodo||""}</div>`;
+  return `<span class="verd">${b(1,"👍","Preferito")}${b(0,"❓","Da valutare")}${b(-1,"👎","Scartato")}</span>${extra}`
        + (v==-1 && m ? `<div class="motivo">${m}</div>` : "");
 }
 function badge(){
@@ -508,6 +525,8 @@ async function scaricaCondiviso(silenzioso){
     VERD = d.verdetti || {};
     OVER = d.modifiche || {};
     NEWH = Array.isArray(d.aggiunte) ? d.aggiunte : [];
+    RISP = d.risposte || {};
+    COSTI = d.costi || {};
     SYNC="ok"; badge();
     if(!silenzioso) render();
   }catch(e){ SYNC="errore"; badge(); }
@@ -522,7 +541,7 @@ function salvaRamo(){
     try{
       const r=await fetch(SYNC_URL,{method:"POST",
         headers:{"Content-Type":"text/plain;charset=utf-8"},
-        body:JSON.stringify({verdetti:VERD,modifiche:OVER,aggiunte:NEWH})});
+        body:JSON.stringify({verdetti:VERD,modifiche:OVER,aggiunte:NEWH,costi:COSTI})});
       if(!r.ok) throw new Error(r.status);
       SYNC="ok"; badge();
     }catch(e){ SYNC="errore"; badge(); toast("Non sono riuscito a salvare online"); }
@@ -534,6 +553,56 @@ function setVerdetto(k,v,m){
   render();
   salvaRamo();
   toast(v==1?"Aggiunto ai preferiti":v==-1?"Scartato":"Rimesso fra quelli da valutare");
+}
+
+/* ============ pannello della risposta ricevuta ============
+   Mostra la mail arrivata dalla struttura e permette di registrare
+   il preventivo: il programma propone le cifre, l'ultima parola e' di chi legge. */
+function esc2(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;"); }
+function openRisposta(k){
+  const r = RISP[k]; if(!r) return;
+  const c = COSTI[k] || {};
+  const el = document.getElementById("editor") || Object.assign(document.createElement("div"),{id:"editor"});
+  const chips = (r.prezzi||[]).slice(0,8).map(p=>`<button class="chip" data-p="${esc2(p)}">${esc2(p)} €</button>`).join(" ");
+  el.innerHTML =
+    `<h3>📨 Risposta ricevuta</h3>`
+   +`<div class="sub2">${esc2(r.da)} · ${esc2(r.data)}</div>`
+   +`<div style="font-weight:600;font-size:12.5px;margin-bottom:4px">${esc2(r.oggetto)}</div>`
+   +`<div class="mailtxt">${esc2(r.testo).replace(/\n/g,"<br>")}</div>`
+   +(r.link?`<div style="margin:8px 0"><a href="${esc2(r.link)}" target="_blank" rel="noopener">Apri la conversazione in Gmail</a></div>`:"")
+   +(chips?`<label>Cifre trovate nel messaggio — tocca per usarle</label><div class="chips">${chips}</div>`:"")
+   +`<label>Preventivo confermato</label>
+     <div class="eg">
+       <div><label>Totale €</label><input id="c_tot" type="number" min="0" step="1" value="${c.tot??""}"></div>
+       <div><label>Notti</label><input id="c_notti" type="number" min="1" step="1" value="${c.notti??""}"></div>
+       <div><label>Adulti</label><input id="c_ad" type="number" min="1" step="1" value="${c.ad??2}"></div>
+       <div><label>Bambini</label><input id="c_ba" type="number" min="0" step="1" value="${c.ba??2}"></div>
+     </div>
+     <label>Periodo</label><input id="c_per" type="text" placeholder="es. ottobre 2026" value="${esc2(c.periodo)}">
+     <label>Nota</label><input id="c_nota" type="text" placeholder="es. mezza pensione, camera family" value="${esc2(c.nota)}">
+     <div id="c_calc" class="sub2" style="margin-top:6px"></div>
+     <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
+       <button class="btn primary" id="c_save">Salva il preventivo</button>
+       <button class="btn" id="c_del">Cancella</button>
+       <button class="btn" id="c_close">Chiudi</button>
+     </div>`;
+  if(!el.parentNode) document.body.appendChild(el);
+  const g=id=>document.getElementById(id);
+  const calc=()=>{
+    const t=+g("c_tot").value, n=+g("c_notti").value;
+    g("c_calc").textContent = (t>0&&n>0) ? `Fa ${Math.round(t/n)} € a notte per l'intera famiglia.` : "";
+  };
+  ["c_tot","c_notti"].forEach(i=>g(i).addEventListener("input",calc)); calc();
+  el.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{ g("c_tot").value=b.dataset.p.replace(/[^\d]/g,""); calc(); });
+  g("c_save").onclick=()=>{
+    const t=+g("c_tot").value, n=+g("c_notti").value;
+    if(!(t>0&&n>0)){ alert("Servono almeno il totale e il numero di notti."); return; }
+    COSTI[k]={tot:t,notti:n,ad:+g("c_ad").value||null,ba:+g("c_ba").value||null,
+              periodo:g("c_per").value.trim(),nota:g("c_nota").value.trim()};
+    salvaRamo(); render(); closeEditor(); toast("Preventivo salvato");
+  };
+  g("c_del").onclick=()=>{ delete COSTI[k]; salvaRamo(); render(); closeEditor(); toast("Preventivo rimosso"); };
+  g("c_close").onclick=closeEditor;
 }
 
 function render(){
@@ -567,6 +636,7 @@ function render(){
     th.classList.remove("sorted","asc");
     if (th.dataset.k===sortKey) th.classList.add(sortDir===1?"asc":"sorted");
   });
+  document.querySelectorAll(".risp").forEach(b=>b.onclick=()=>openRisposta(b.dataset.k));
   document.querySelectorAll(".vb").forEach(b=>b.onclick=()=>{
     const k=b.dataset.k, v=b.dataset.v;
     if(v=="-1"){ const m=prompt("Perche' lo scarti? (facoltativo)", (VERD[k]&&VERD[k].m)||""); setVerdetto(k,-1,m?m.trim():""); }
@@ -652,7 +722,7 @@ document.getElementById("inclUnv").addEventListener("change",()=>{ updateMail();
 document.getElementById("btnMail").addEventListener("click",()=>{
   const mails=mailRecipients().map(h=>h.email);
   const url=`mailto:?bcc=${encodeURIComponent(mails.join(","))}`+
-    `&subject=${encodeURIComponent("Richiesta preventivo vacanza in famiglia")}`+
+    `&subject=${encodeURIComponent("Richiesta preventivo vacanza in famiglia [FH]")}`+
     `&body=${encodeURIComponent(document.getElementById("mailBody").value)}`;
   if (url.length>1900) document.getElementById("mailmsg").textContent="Attenzione: link molto lungo, alcuni client potrebbero troncarlo. In caso, usa i pulsanti di copia.";
   window.location.href=url;
