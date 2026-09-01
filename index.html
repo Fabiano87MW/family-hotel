@@ -166,6 +166,17 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
     <input type="text" id="fsearch" placeholder="Cerca nome o località…" style="min-width:170px">
   </div>
   <div class="filters" style="margin-top:10px">
+    <span style="font-size:11.5px;color:#8a8378">Costo a notte per tutta la famiglia:</span>
+    <select id="fcosto">
+      <option value="">con e senza preventivo</option>
+      <option value="si">solo chi ha già dato un prezzo</option>
+      <option value="no">solo chi non ha ancora risposto</option>
+    </select>
+    <label class="chk">da <input type="number" id="cmin" placeholder="—" min="0" step="10" style="width:74px"> €</label>
+    <label class="chk">a <input type="number" id="cmax" placeholder="—" min="0" step="10" style="width:74px"> €</label>
+    <span id="costomsg" style="font-size:11.5px;color:#8a8378"></span>
+  </div>
+  <div class="filters" style="margin-top:10px">
     <span style="font-size:11.5px;color:#8a8378">Requisiti obbligatori:</span>
     <label class="chk"><input type="checkbox" class="req" data-r="piscine"> Piscina interna</label>
     <label class="chk"><input type="checkbox" class="req" data-r="giochi"> Area giochi interna</label>
@@ -197,6 +208,7 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
     <th data-k="zona">Zona</th>
     <th data-k="minuti" class="num">Da Castelli<br>Calepio</th>
     <th data-k="stelle" class="num">Cat.</th>
+    <th data-k="costo" class="num" title="Costo a notte per tutta la famiglia, ricavato dal preventivo confermato">€/notte</th>
     <th data-k="spa">SPA</th>
     <th data-k="giochi">Giochi<br>interni</th>
     <th data-k="piscine">Piscine<br>interne</th>
@@ -350,8 +362,11 @@ function visibleRows(){
   const q=document.getElementById("fsearch").value.trim().toLowerCase();
   const reqs=[...document.querySelectorAll(".req:checked")].map(c=>c.dataset.r);
   const STARS=[...document.querySelectorAll(".star:checked")].map(c=>c.dataset.v);
+  const fc=document.getElementById("fcosto").value;
+  const cmin=+document.getElementById("cmin").value || null;
+  const cmax=+document.getElementById("cmax").value || null;
 
-  return LIVE().map(h=>({...h, minuti:minutiDi(h), prezzoFam:famPrice(h), rated:isRated(h)}))
+  return LIVE().map(h=>({...h, minuti:minutiDi(h), prezzoFam:famPrice(h), rated:isRated(h), costo:costoNotte(h)}))
     .map(h=>({...h, score:score(h,maxmin)}))
     .filter(h=>{
       if (fz && h.zona!==fz) return false;
@@ -360,12 +375,24 @@ function visibleRows(){
       if (TAB!=="" && String(verdOf(h).v) !== TAB) return false;
       if (fst==="ok" && !h.rated) return false;
       if (fst==="todo" && h.rated) return false;
+      /* Una fascia di prezzo ha senso solo su chi un prezzo l'ha dato:
+         chi non ha ancora risposto esce, altrimenti il filtro non filtra niente. */
+      if (fc==="si" && h.costo==null) return false;
+      if (fc==="no" && h.costo!=null) return false;
+      if ((cmin||cmax) && h.costo==null) return false;
+      if (cmin && h.costo<cmin) return false;
+      if (cmax && h.costo>cmax) return false;
       for (const r of reqs) if (!(h[r]>=3)) return false;
       if (q && !(h.nome+" "+h.loc+" "+h.zona).toLowerCase().includes(q)) return false;
       return true;
     })
     .sort((a,b)=>{
       let va=a[sortKey], vb=b[sortKey];
+      if (sortKey==="costo"){                  // chi non ha ancora un preventivo resta in fondo
+        if (va==null && vb==null) return 0;
+        if (va==null) return 1;
+        if (vb==null) return -1;
+      }
       if (va==null) va=-Infinity; if (vb==null) vb=-Infinity;
       if (typeof va==="string") return sortDir*va.localeCompare(vb);
       return sortDir*(va-vb);
@@ -491,6 +518,12 @@ let TAB = "";
 let PENDING = 0, ULTIMO = 0;
 
 const verdOf = h => VERD[hkey(h)] || {v:0};
+/* Costo a notte per tutta la famiglia, dal preventivo che l'utente ha confermato.
+   null finche' l'hotel non ha risposto: e' un dato che nasce dalla corrispondenza, non dal catalogo. */
+function costoNotte(h){
+  const c = COSTI[hkey(h)];
+  return (c && c.tot > 0 && c.notti > 0) ? Math.round(c.tot / c.notti) : null;
+}
 function verdBox(h){
   const {v,m} = verdOf(h);
   const k = hkey(h).replace(/"/g,"&quot;");
@@ -499,7 +532,7 @@ function verdBox(h){
   const r=RISP[k2], c=COSTI[k2];
   let extra="";
   if(r) extra+=`<button class="risp" data-k="${k}" title="Ha risposto il ${r.data||""}">📨</button>`;
-  if(c && c.tot && c.notti) extra+=`<div class="costo">≈ ${Math.round(c.tot/c.notti)} €/notte · ${c.ad||"?"}+${c.ba||"?"} · ${c.periodo||""}</div>`;
+  if(c && c.tot && c.notti) extra+=`<div class="costo">${c.notti} notti · ${c.ad||"?"}+${c.ba||"?"}${c.periodo? " · "+c.periodo : ""}</div>`;
   return `<span class="verd">${b(1,"👍","Preferito")}${b(0,"❓","Da valutare")}${b(-1,"👎","Scartato")}</span>${extra}`
        + (v==-1 && m ? `<div class="motivo">${m}</div>` : "");
 }
@@ -626,6 +659,7 @@ function render(){
       <td data-l="Zona" class="loc">${h.zona}</td>
       <td data-l="Viaggio" class="num">${hhmm(h.minuti)}</td>
       <td data-l="Categoria" class="num">${starTxt(h.stelle)}</td>
+      <td class="num">${h.costo!=null ? `<b>${h.costo}</b>` : '<span style="color:#c9c3b8">—</span>'}</td>
       <td data-l="SPA">${dots(h.spa)} ${nordTag(h.nordica)}</td>
       <td data-l="Giochi interni">${dots(h.giochi)}</td>
       <td data-l="Piscine interne">${dots(h.piscine)}</td>
@@ -638,6 +672,13 @@ function render(){
   }).join("");
 
   const ALLH=LIVE(); const nRated=ALLH.filter(isRated).length;
+  { /* il filtro sul costo lavora solo su chi ha risposto: dirlo evita di credere che sia rotto */
+    const nCosti=ALLH.filter(x=>costoNotte(x)!=null).length;
+    const cm=document.getElementById("costomsg");
+    if(cm) cm.textContent = nCosti
+      ? `${nCosti} ${nCosti===1?"struttura ha":"strutture hanno"} un preventivo confermato`
+      : "Nessun preventivo confermato per ora: il costo compare dopo che hai registrato la risposta di un hotel.";
+  }
   document.getElementById("count").innerHTML =
     `<b>${rows.length}</b> strutture su ${ALLH.length} · ${nRated} valutate · partenza da ${origine()[0]} · <b>${selected.size}</b> selezionate`;
 
@@ -768,7 +809,7 @@ Object.keys(DEFAULT_W).forEach(k=>document.getElementById("w_"+k).addEventListen
 document.getElementById("forig").innerHTML=ORIGINI.map((o,i)=>'<option value="'+i+'">'+o[0]+'</option>').join("");
 document.getElementById("fzona").innerHTML='<option value="">Tutte le zone</option>'+
   [...new Set(LIVE().map(h=>h.zona).filter(Boolean))].sort().map(z=>`<option>${z}</option>`).join("");
-["fzona","fstato","fsearch","maxmin","forig"].forEach(id=>
+["fzona","fstato","fsearch","maxmin","forig","fcosto","cmin","cmax"].forEach(id=>
   document.getElementById(id).addEventListener("input",()=>{ save(); render(); }));
 document.querySelectorAll(".req").forEach(c=>c.addEventListener("change",()=>{ save(); render(); }));
 document.querySelectorAll(".star").forEach(c=>c.addEventListener("change",()=>{ save(); render(); }));
@@ -799,6 +840,8 @@ document.getElementById("reset").addEventListener("click",()=>{
   W={...DEFAULT_W};
   Object.keys(W).forEach(k=>{ document.getElementById("w_"+k).value=W[k]; document.getElementById("v_"+k).textContent=W[k]; });
   maxmin.value=240; forig.value=0;
+  document.getElementById("fcosto").value="";
+  document.getElementById("cmin").value=""; document.getElementById("cmax").value="";
   document.querySelectorAll(".star").forEach(c=>c.checked=true);
   document.querySelectorAll(".req").forEach(c=>c.checked=false);
   save(); render();
@@ -806,6 +849,8 @@ document.getElementById("reset").addEventListener("click",()=>{
 
 function save(){ try{ localStorage.setItem("fh_taa_v2", JSON.stringify({
   W, maxmin:maxmin.value, orig:forig.value, fz:fzona.value, fst:fstato.value, tab:TAB,
+  fc:document.getElementById("fcosto").value,
+  cmin:document.getElementById("cmin").value, cmax:document.getElementById("cmax").value,
   stars:[...document.querySelectorAll(".star")].map(c=>c.checked),
   reqs:[...document.querySelectorAll(".req")].map(c=>c.checked),
   sel:[...selected], dArr:dArr.value, dPar:dPar.value, nAd:nAd.value, nBa:nBa.value, etaBa:etaBa.value, tratt:tratt.value
@@ -818,6 +863,9 @@ function load(){ try{
   if(s.orig)forig.value=s.orig;
   if(s.stars)document.querySelectorAll(".star").forEach((c,i)=>{ if(s.stars[i]!==undefined) c.checked=s.stars[i]; });
   if(s.fz)fzona.value=s.fz; if(s.fst)fstato.value=s.fst; if(s.tab!==undefined)TAB=s.tab;
+  if(s.fc) document.getElementById("fcosto").value=s.fc;
+  if(s.cmin) document.getElementById("cmin").value=s.cmin;
+  if(s.cmax) document.getElementById("cmax").value=s.cmax;
   if(s.reqs)document.querySelectorAll(".req").forEach((c,i)=>c.checked=!!s.reqs[i]);
   (s.sel||[]).forEach(n=>selected.add(n));
   if(s.dArr)dArr.value=s.dArr; if(s.dPar)dPar.value=s.dPar;
