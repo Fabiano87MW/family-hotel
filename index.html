@@ -117,6 +117,8 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
 .chip{ font-size:12px; padding:3px 9px; border-radius:14px; border:1px solid #d8d3ca;
   background:#fff; cursor:pointer; }
 .chip:hover{ background:#eef4f0; border-color:#2f6f4f; }
+.chip.off{ background:#eef4f0; border-color:#2f6f4f; color:#2f6f4f; font-weight:600; text-decoration:none; }
+.chip.off:hover{ background:#dceae1; }
 @media (max-width:760px){
   body{ padding:10px; font-size:14px; } h1{ font-size:18px; }
   .tablewrap{ border:0; background:transparent; max-height:none; overflow:visible; }
@@ -569,6 +571,11 @@ function openRisposta(k){
    +`<div class="sub2">${esc2(r.da)} · ${esc2(r.data)}</div>`
    +`<div style="font-weight:600;font-size:12.5px;margin-bottom:4px">${esc2(r.oggetto)}</div>`
    +`<div class="mailtxt">${esc2(r.testo).replace(/\n/g,"<br>")}</div>`
+   +((r.link_offerta||[]).length
+       ? `<label>Offerta online — molti hotel mettono qui il preventivo</label><div class="chips">`
+         + r.link_offerta.map((u,i)=>`<a class="chip off" href="${esc2(u)}" target="_blank" rel="noopener">🔗 ${i===0?"Apri l'offerta":"Link "+(i+1)}</a>`).join(" ")
+         + `</div>` : "")
+   +(r.allegati ? `<div class="sub2" style="margin-top:6px">📎 ${r.allegati} allegato/i nella mail: se il listino è in PDF, il prezzo va letto lì.</div>` : "")
    +(r.link?`<div style="margin:8px 0"><a href="${esc2(r.link)}" target="_blank" rel="noopener">Apri la conversazione in Gmail</a></div>`:"")
    +(chips?`<label>Cifre trovate nel messaggio — tocca per usarle</label><div class="chips">${chips}</div>`:"")
    +`<label>Preventivo confermato</label>
