@@ -232,7 +232,7 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
   <textarea id="mailBody" rows="14"></textarea>
   <div style="margin-top:11px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
     <button class="btn primary" id="btnMail" disabled>Apri la mail con i selezionati in CCN</button>
-    <label class="chk"><input type="checkbox" id="inclUnv"> includi anche gli indirizzi da confermare</label>
+    <label class="chk"><input type="checkbox" id="inclUnv" checked> includi anche gli indirizzi da confermare (se sbagliati, il messaggio torna indietro e la scheda si segna da sola)</label>
     <button class="btn" id="btnCopyMails">Copia indirizzi</button>
     <button class="btn" id="btnCopyBody">Copia testo</button>
     <button class="btn" id="btnCopySites">Copia elenco siti</button>
@@ -485,6 +485,7 @@ const SYNC_URL = "https://script.google.com/macros/s/AKfycbw6j95HbLyG2OcdStn0E9V
 let VERD = {};                  /* giudizi: chiave -> {v:1|0|-1, m:"motivo"} */
 let RISP = {};                  /* risposte via Gmail: chiave -> {da,data,oggetto,testo,link,prezzi[]} */
 let COSTI = {};                 /* preventivi confermati: chiave -> {tot,notti,ad,ba,periodo,nota} */
+let RIMB = {};                  /* indirizzi rimbalzati: chiave -> {indirizzo,motivo,data} */
 let SYNC = SYNC_URL ? "attesa" : "locale";
 let TAB = "";
 let PENDING = 0, ULTIMO = 0;
@@ -529,6 +530,7 @@ async function scaricaCondiviso(silenzioso){
     NEWH = Array.isArray(d.aggiunte) ? d.aggiunte : [];
     RISP = d.risposte || {};
     COSTI = d.costi || {};
+    RIMB = d.rimbalzi || {};
     SYNC="ok"; badge();
     if(!silenzioso) render();
   }catch(e){ SYNC="errore"; badge(); }
@@ -699,7 +701,14 @@ Resto in attesa di un vostro riscontro e vi ringrazio in anticipo.
 Cordiali saluti,
 ${nome||"[il tuo nome]"}${mail? "\n"+mail:""}${tel? "\nTel. "+tel:""}`;
 }
+/* Un rimbalzo vale solo per l'indirizzo che l'ha causato: se l'indirizzo viene corretto, decade. */
+function rimbalzo(h){
+  const r = RIMB[hkey(h)];
+  return (r && h.email && r.indirizzo === String(h.email).toLowerCase()) ? r : null;
+}
 function mailTag(h){
+  const r = rimbalzo(h);
+  if (r) return `<span class="tag bad" title="Il messaggio a ${r.indirizzo} e' tornato indietro il ${r.data||"?"}: ${r.motivo||"consegna fallita"}. La struttura resta nel catalogo, ma l'indirizzo va corretto a mano.">↩ ${r.motivo||"consegna fallita"}</span>`;
   if (!h.email) return '<span class="tag bad">email assente</span>';
   return h.emailv===1 ? '<span class="tag">email verificata</span>'
                       : '<span class="tag warn">email da confermare</span>';
@@ -707,16 +716,20 @@ function mailTag(h){
 function selectedHotels(){ return LIVE().filter(h=>selected.has(hkey(h))); }
 function mailRecipients(){
   const inclUnv = document.getElementById("inclUnv").checked;
-  return selectedHotels().filter(h=>h.email && (h.emailv===1 || inclUnv));
+  return selectedHotels().filter(h=>h.email && !rimbalzo(h) && (h.emailv===1 || inclUnv));
 }
 function updateMail(){
   const sel=selectedHotels();
-  const ver=sel.filter(h=>h.email&&h.emailv===1), unv=sel.filter(h=>h.email&&h.emailv!==1), no=sel.filter(h=>!h.email);
+  const ko=sel.filter(rimbalzo);
+  const buoni=sel.filter(h=>!rimbalzo(h));
+  const ver=buoni.filter(h=>h.email&&h.emailv===1), unv=buoni.filter(h=>h.email&&h.emailv!==1), no=buoni.filter(h=>!h.email);
   const withMail=mailRecipients();
   const box=document.getElementById("selinfo");
   if (!sel.length) box.textContent="Nessun hotel selezionato. Spunta le caselle nella tabella qui sopra.";
   else box.innerHTML = `<b>${sel.length}</b> selezionati — <b>${ver.length}</b> con email verificata sul sito ufficiale, `+
-    `<b>${unv.length}</b> da confermare, <b>${no.length}</b> senza indirizzo.<br><span style="color:#8a8378">`+
+    `<b>${unv.length}</b> da confermare, <b>${no.length}</b> senza indirizzo`+
+    (ko.length? `, <b>${ko.length}</b> con indirizzo rimbalzato (esclusi dall'invio)` : "")+
+    `.<br><span style="color:#8a8378">`+
     sel.map(h=>h.nome).join(" · ")+`</span>`;
   document.getElementById("btnMail").disabled = withMail.length===0;
   document.getElementById("mailmsg").textContent = withMail.length===0 && sel.length
