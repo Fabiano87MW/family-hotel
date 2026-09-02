@@ -468,7 +468,7 @@ function openEditor(k){
     const c=raccogli();
     if(isAdd){
       const nome=g('nome').trim(), loc=g('loc').trim();
-      if(!nome){ alert('Serve almeno il nome della struttura.'); return; }
+      if(!nome){ toast('Serve almeno il nome della struttura.'); return; }
       NEWH.push({...blank(),...c,nome,loc:loc||'—'}); saveNew();
     } else {
       const base=HOTELS.find(x=>hkey(x)===k) || REPO_NEW.find(x=>hkey(x)===k) || NEWH.find(x=>hkey(x)===k);
@@ -515,7 +515,7 @@ function importOver(){
     if(Array.isArray(d.aggiunte)){ const k=new Set(NEWH.map(hkey)); d.aggiunte.forEach(a=>{ if(!k.has(hkey(a))) NEWH.push(a); }); }
     saveOver(); saveNew(); render();
     document.getElementById('overmsg').textContent='Importato.';
-  }catch(e){ alert('Non è un pacchetto valido: '+e.message); }
+  }catch(e){ toast('Non e un pacchetto valido: '+e.message); }
 }
 
 /* ================= archivio condiviso ==================
@@ -550,6 +550,7 @@ function verdBox(h){
   let extra="";
   if(r) extra+=`<button class="risp" data-k="${k}" title="Ha risposto il ${r.data||""}">📨</button>`;
   if(c && c.tot && c.notti) extra+=`<div class="costo">${c.notti} notti · ${c.ad||"?"}+${c.ba||"?"}${c.periodo? " · "+c.periodo : ""}</div>`;
+  extra+=esitoTag(h);
   /* Il motivo si scrive in un campo dentro la riga: le finestrelle di sistema non
      funzionano ovunque, e se non funzionano si portano via anche il giudizio. */
   return `<span class="verd">${b(1,"👍","Preferito")}${b(0,"❓","Da valutare")}${b(-1,"👎","Scartato")}</span>${extra}`
@@ -620,6 +621,25 @@ function setVerdetto(k,v,m,soloMotivo){
    Mostra la mail arrivata dalla struttura e permette di registrare
    il preventivo: il programma propone le cifre, l'ultima parola e' di chi legge. */
 function esc2(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;"); }
+/* Non tutte le risposte sono preventivi: molte dicono soltanto che sono chiusi o che
+   chiedono un minimo di notti. Sono informazioni che decidono la vacanza quanto il prezzo,
+   e prima non avevano un posto dove stare. */
+const ESITI = [
+  ["",        "— da registrare —"],
+  ["prezzo",  "Ha mandato il preventivo"],
+  ["chiuso",  "Chiuso nel periodo"],
+  ["minimo",  "Soggiorno minimo troppo lungo"],
+  ["pieno",   "Non ha disponibilità"],
+  ["evasiva", "Risposta che non dice il prezzo"]
+];
+const ESITO_TAG = { chiuso:"chiuso nel periodo", minimo:"soggiorno minimo", pieno:"non disponibile",
+                    evasiva:"risposta senza prezzo" };
+function esitoTag(h){
+  const c = COSTI[hkey(h)];
+  if(!c || !c.esito || c.esito==="prezzo") return "";
+  const t = ESITO_TAG[c.esito]; if(!t) return "";
+  return `<div class="tag warn" style="margin-top:3px;display:inline-block">${t}${c.nota? " · "+c.nota : ""}</div>`;
+}
 function openRisposta(k){
   const r = RISP[k]; if(!r) return;
   const c = COSTI[k] || {};
@@ -637,7 +657,10 @@ function openRisposta(k){
    +(r.allegati ? `<div class="sub2" style="margin-top:6px">📎 ${r.allegati} allegato/i nella mail: se il listino è in PDF, il prezzo va letto lì.</div>` : "")
    +(r.link?`<div style="margin:8px 0"><a href="${esc2(r.link)}" target="_blank" rel="noopener">Apri la conversazione in Gmail</a></div>`:"")
    +(chips?`<label>Cifre trovate nel messaggio — tocca per usarle</label><div class="chips">${chips}</div>`:"")
-   +`<label>Preventivo confermato</label>
+   +`<label>Esito della richiesta</label>
+     <select id="c_esito">${ESITI.map(e=>
+        `<option value="${e[0]}"${(c.esito||"")===e[0]?" selected":""}>${e[1]}</option>`).join("")}</select>
+     <label>Preventivo, se lo ha mandato</label>
      <div class="eg">
        <div><label>Totale €</label><input id="c_tot" type="number" min="0" step="1" value="${c.tot??""}"></div>
        <div><label>Notti</label><input id="c_notti" type="number" min="1" step="1" value="${c.notti??""}"></div>
@@ -661,11 +684,16 @@ function openRisposta(k){
   ["c_tot","c_notti"].forEach(i=>g(i).addEventListener("input",calc)); calc();
   el.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{ g("c_tot").value=b.dataset.p.replace(/[^\d]/g,""); calc(); });
   g("c_save").onclick=()=>{
-    const t=+g("c_tot").value, n=+g("c_notti").value;
-    if(!(t>0&&n>0)){ alert("Servono almeno il totale e il numero di notti."); return; }
-    COSTI[k]={tot:t,notti:n,ad:+g("c_ad").value||null,ba:+g("c_ba").value||null,
-              periodo:g("c_per").value.trim(),nota:g("c_nota").value.trim()};
-    salvaRamo(); render(); closeEditor(); toast("Preventivo salvato");
+    const t=+g("c_tot").value, n=+g("c_notti").value, es=g("c_esito").value;
+    const conPrezzo = t>0 && n>0;
+    if(es==="prezzo" && !conPrezzo){ toast("Per il preventivo servono totale e notti."); return; }
+    if(!es && !conPrezzo){ toast("Scegli un esito, oppure metti totale e notti."); return; }
+    COSTI[k]={tot:conPrezzo?t:null, notti:conPrezzo?n:null,
+              ad:+g("c_ad").value||null, ba:+g("c_ba").value||null,
+              periodo:g("c_per").value.trim(), nota:g("c_nota").value.trim(),
+              esito: es || "prezzo"};
+    salvaRamo(); render(); closeEditor();
+    toast(conPrezzo? "Preventivo salvato" : "Esito registrato");
   };
   g("c_del").onclick=()=>{ delete COSTI[k]; salvaRamo(); render(); closeEditor(); toast("Preventivo rimosso"); };
   g("c_close").onclick=closeEditor;
