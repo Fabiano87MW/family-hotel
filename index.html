@@ -104,6 +104,9 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
 .vb:hover{ opacity:.9; filter:none; background:#f6f4f0; }
 .vb.on{ opacity:1; filter:none; border-color:#2f6f4f; background:#eef4f0; }
 .motivo{ font-size:10.5px; color:#96602a; margin-top:3px; max-width:150px; line-height:1.35; }
+.motin{ display:block; margin-top:4px; width:150px; font-size:10.5px; color:#96602a;
+        border:1px solid #e6e3dd; border-radius:4px; padding:2px 4px; background:#fffdf9; }
+.motin:focus{ outline:none; border-color:#96602a; }
 #toast{ position:fixed; left:50%; bottom:-60px; transform:translateX(-50%); background:#1f2421; color:#fff;
   padding:9px 16px; border-radius:20px; font-size:13px; z-index:99; transition:bottom .25s; box-shadow:0 4px 16px rgba(0,0,0,.25); }
 #toast.mostra{ bottom:20px; }
@@ -484,16 +487,26 @@ function openEditor(k){
 }
 function closeEditor(){ const e=document.getElementById('editor'); if(e) e.remove(); }
 
+/* Alcuni contenitori (l'app da scrivania, le pagine incorporate) non hanno le finestrelle
+   di sistema: chiamarle da' errore e manda per aria la funzione che le usa. Qui si prova,
+   e se non ci sono si torna indietro senza rompere niente. */
+function chiediTesto(msg, def){
+  try{ if(typeof prompt!=="function") return null; return prompt(msg, def||""); }
+  catch(e){ return null; }
+}
 function overCount(){ return Object.keys(OVER).length + NEWH.length; }
 function pacchetto(){ return {esportato:new Date().toISOString(), modifiche:OVER, aggiunte:NEWH, verdetti:VERD}; }
 function exportOver(){
   const txt=JSON.stringify(pacchetto(),null,1);
   navigator.clipboard.writeText(txt).then(()=>{
     document.getElementById('overmsg').textContent='Copiato: '+Object.keys(OVER).length+' modifiche e '+NEWH.length+' aggiunte. Incollamelo in chat per renderle definitive su tutti i dispositivi.';
-  },()=>{ prompt('Copia questo testo:',txt); });
+  },()=>{ if(chiediTesto('Copia questo testo:',txt)===null)
+            document.getElementById('overmsg').textContent='Non riesco a copiare negli appunti da questo dispositivo.'; });
 }
 function importOver(){
-  const t=prompt('Incolla qui il pacchetto esportato da un altro dispositivo:');
+  const t=chiediTesto('Incolla qui il pacchetto esportato da un altro dispositivo:');
+  if(t===null){ document.getElementById('overmsg').textContent=
+    'Su questo dispositivo non posso aprire la finestra di incollaggio. Non serve comunque: giudizi e modifiche si sincronizzano da soli.'; return; }
   if(!t) return;
   try{
     const d=JSON.parse(t);
@@ -537,8 +550,10 @@ function verdBox(h){
   let extra="";
   if(r) extra+=`<button class="risp" data-k="${k}" title="Ha risposto il ${r.data||""}">📨</button>`;
   if(c && c.tot && c.notti) extra+=`<div class="costo">${c.notti} notti · ${c.ad||"?"}+${c.ba||"?"}${c.periodo? " · "+c.periodo : ""}</div>`;
+  /* Il motivo si scrive in un campo dentro la riga: le finestrelle di sistema non
+     funzionano ovunque, e se non funzionano si portano via anche il giudizio. */
   return `<span class="verd">${b(1,"👍","Preferito")}${b(0,"❓","Da valutare")}${b(-1,"👎","Scartato")}</span>${extra}`
-       + (v==-1 && m ? `<div class="motivo">${m}</div>` : "");
+       + (v==-1 ? `<input class="motin" data-k="${k}" placeholder="perché lo scarti?" value="${(m||"").replace(/"/g,"&quot;")}">` : "");
 }
 function badge(){
   const e=document.getElementById("syncbadge"); if(!e) return;
@@ -591,11 +606,14 @@ function salvaRamo(){
     finally{ PENDING--; }
   },600);        /* accorpo le modifiche ravvicinate in un solo salvataggio */
 }
-function setVerdetto(k,v,m){
+function setVerdetto(k,v,m,soloMotivo){
   if(v==0) delete VERD[k]; else VERD[k]={v:Number(v),...(m?{m}:{})};
-  render();
+  /* Quando cambia solo il motivo non si ridisegna la tabella: si cancellerebbe
+     il campo in cui l'utente sta ancora scrivendo. */
+  if(!soloMotivo) render();
   salvaRamo();
-  toast(v==1?"Aggiunto ai preferiti":v==-1?"Scartato":"Rimesso fra quelli da valutare");
+  toast(soloMotivo ? "Motivo salvato"
+      : v==1?"Aggiunto ai preferiti":v==-1?"Scartato":"Rimesso fra quelli da valutare");
 }
 
 /* ============ pannello della risposta ricevuta ============
@@ -695,8 +713,13 @@ function render(){
   document.querySelectorAll(".risp").forEach(b=>b.onclick=()=>openRisposta(b.dataset.k));
   document.querySelectorAll(".vb").forEach(b=>b.onclick=()=>{
     const k=b.dataset.k, v=b.dataset.v;
-    if(v=="-1"){ const m=prompt("Perche' lo scarti? (facoltativo)", (VERD[k]&&VERD[k].m)||""); setVerdetto(k,-1,m?m.trim():""); }
-    else setVerdetto(k,v);
+    /* Il giudizio si registra sempre e subito. Il motivo, se c'e', si scrive dopo nel campo. */
+    setVerdetto(k, v, v=="-1" ? ((VERD[k]&&VERD[k].m)||"") : undefined);
+    if(v=="-1"){ const el=document.querySelector('.motin[data-k="'+k.replace(/"/g,'\\"')+'"]'); if(el) el.focus(); }
+  });
+  document.querySelectorAll(".motin").forEach(el=>{
+    el.onkeydown=e=>{ e.stopPropagation(); if(e.key==="Enter") el.blur(); };
+    el.onchange=()=>setVerdetto(el.dataset.k, -1, el.value.trim(), true);
   });
   { const tutte=LIVE(), c={"":tutte.length,"1":0,"0":0,"-1":0};
     tutte.forEach(x=>{ c[String(verdOf(x).v)]++; });
