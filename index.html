@@ -246,6 +246,7 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
     <button class="btn primary" id="btnMail" disabled>Apri la mail con i selezionati in CCN</button>
     <div id="ascolto" style="margin-top:8px;font-size:11.5px"></div>
     <label class="chk"><input type="checkbox" id="inclUnv" checked> includi anche gli indirizzi da confermare (se sbagliati, il messaggio torna indietro e la scheda si segna da sola)</label>
+    <label class="chk"><input type="checkbox" id="reinvia"> riscrivi anche a chi ha già ricevuto la richiesta negli ultimi 7 giorni</label>
     <button class="btn" id="btnCopyMails">Copia indirizzi</button>
     <button class="btn" id="btnCopyBody">Copia testo</button>
     <button class="btn" id="btnCopySites">Copia elenco siti</button>
@@ -783,11 +784,22 @@ function mailRecipients(){
    e il taglio e' silenzioso: gli ultimi indirizzi sparirebbero senza avviso. I blocchi si
    chiudono quindi al primo dei due limiti, numero di destinatari o lunghezza del collegamento,
    perche' un testo lungo nella richiesta lascia posto a meno indirizzi. */
-const BLOCCO = 30, LIMITE_URL = 1800;
+const BLOCCO = 30, LIMITE_URL = 1800, GIORNI_RECENTE = 7;
 const OGGETTO = "Richiesta preventivo vacanza in famiglia [FH]";
-let bloccoIdx = 0, firmaSel = "";
+
+/* A chi la richiesta e' gia' partita di recente non si riscrive. Il segno sta nell'archivio
+   condiviso, non in questa pagina: cosi' il conto non si perde se ricarichi o cambi dispositivo. */
+function giaContattato(h){
+  const d = INV[hkey(h)];
+  if(!d) return false;
+  return (Date.now() - new Date(d).getTime()) < GIORNI_RECENTE*86400000;
+}
+function daContattare(){
+  const ri = document.getElementById("reinvia");
+  return mailRecipients().filter(h => (ri && ri.checked) || !giaContattato(h));
+}
 function blocchi(){
-  const l=mailRecipients(), out=[];
+  const l=daContattare(), out=[];
   const fisso = "mailto:?bcc=".length + "&subject=".length + encodeURIComponent(OGGETTO).length
               + "&body=".length + encodeURIComponent(document.getElementById("mailBody").value).length;
   let cur=[], len=fisso;
@@ -816,26 +828,28 @@ function updateMail(){
   /* Il collegamento al programma di posta ha una lunghezza massima: oltre una trentina
      di indirizzi il sistema lo taglia e gli ultimi hotel non ricevono niente, in silenzio.
      Quindi la selezione viene divisa da sola, e i blocchi si aprono uno per volta. */
-  const B=blocchi();
-  const firma=B.flat().map(h=>h.email).join(",");
-  if(firma!==firmaSel){ firmaSel=firma; bloccoIdx=0; }
-  if(bloccoIdx>=B.length) bloccoIdx=0;
+  const B=blocchi(), resta=B.reduce((s,g)=>s+g.length,0);
+  const fatti=withMail.length-resta;
 
   const btn=document.getElementById("btnMail");
-  btn.disabled = withMail.length===0;
-  btn.textContent = B.length<=1
-    ? `Apri la mail con i ${withMail.length||""} selezionati in CCN`.replace("  "," ")
-    : `Apri l'invio ${bloccoIdx+1} di ${B.length} — ${B[bloccoIdx].length} hotel`;
+  btn.disabled = B.length===0;
+  btn.textContent = B.length===0
+    ? (withMail.length? "Richieste gia' inviate a tutti i selezionati" : "Apri la mail con i selezionati in CCN")
+    : (B.length===1 ? `Apri la mail con ${B[0].length} hotel in CCN`
+                    : `Apri l'invio 1 di ${B.length} — ${B[0].length} hotel`);
 
   const msg=document.getElementById("mailmsg");
   if(withMail.length===0 && sel.length)
     msg.textContent="Nessun destinatario utilizzabile: o mancano gli indirizzi, o sono tutti da confermare. Usa Copia elenco siti.";
+  else if(B.length===0 && withMail.length)
+    msg.textContent=`Hai gia' scritto a tutti e ${withMail.length}. Per riscrivere lo stesso, spunta la casella qui sopra.`;
   else if(B.length>1)
-    msg.textContent=`${withMail.length} destinatari divisi da soli in ${B.length} invii. `+
-      `Apri il primo, spediscilo dal tuo programma di posta, torna qui: il pulsante sara' gia' pronto per il successivo.`;
+    msg.textContent=`${resta} hotel da contattare${fatti? ", "+fatti+" gia' fatti":""}: l'app li divide da sola in ${B.length} invii. `+
+      `Apri il primo, spediscilo dal tuo programma di posta e torna qui: il pulsante sara' gia' pronto per quelli dopo.`;
   else msg.textContent="";
 }
 document.getElementById("inclUnv").addEventListener("change",()=>{ updateMail(); });
+document.getElementById("reinvia").addEventListener("change",()=>{ updateMail(); });
 ["dArr","dPar","nAd","nBa","etaBa","tratt","mNome","mMail","mTel","mExtra"].forEach(id=>
   document.getElementById(id).addEventListener("input",()=>{ document.getElementById("mailBody").value=buildBody(); saveMitt(); }));
 
@@ -876,24 +890,22 @@ function mostraAscolto(){
   }
 }
 document.getElementById("btnMail").addEventListener("click",()=>{
-  const B=blocchi(), gruppo=B[bloccoIdx];
+  /* Si apre sempre il primo blocco di chi resta da contattare. Segnando gli hotel appena
+     serviti, al ritorno il primo blocco e' gia' quello dopo: non serve tenere il conto,
+     e ricaricare la pagina non fa perdere il segno. */
+  const B=blocchi(), gruppo=B[0], totali=B.length;
   if(!gruppo || !gruppo.length) return;
   const url=`mailto:?bcc=${encodeURIComponent(gruppo.map(h=>h.email).join(","))}`+
-    `&subject=${encodeURIComponent("Richiesta preventivo vacanza in famiglia [FH]")}`+
+    `&subject=${encodeURIComponent(OGGETTO)}`+
     `&body=${encodeURIComponent(document.getElementById("mailBody").value)}`;
 
   const oggi=new Date().toISOString().slice(0,10);
   gruppo.forEach(h=>{ INV[hkey(h)]=oggi; });
   apriAscolto();
-
-  bloccoIdx++;
-  const fatti=bloccoIdx, totali=B.length;
-  if(bloccoIdx>=B.length) bloccoIdx=0;
   render();
   document.getElementById("mailmsg").textContent = totali>1
-    ? (fatti>=totali ? `Aperti tutti i ${totali} invii. Controlla di averli spediti davvero dal programma di posta.`
-                     : `Invio ${fatti} di ${totali} aperto. Quando l'hai spedito, premi di nuovo il pulsante per il successivo.`)
-    : "";
+    ? `Aperto un invio da ${gruppo.length} hotel. Spediscilo, poi premi di nuovo: ne restano ${totali-1}.`
+    : `Aperto l'invio da ${gruppo.length} hotel. Ricordati di spedirlo davvero.`;
   window.location.href=url;
 });
 function copy(txt,msg){
