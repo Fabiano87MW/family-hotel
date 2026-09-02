@@ -104,6 +104,8 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
 .vb:hover{ opacity:.9; filter:none; background:#f6f4f0; }
 .vb.on{ opacity:1; filter:none; border-color:#2f6f4f; background:#eef4f0; }
 .motivo{ font-size:10.5px; color:#96602a; margin-top:3px; max-width:150px; line-height:1.35; }
+.tag.lett{ background:#f3eefb; color:#5b3f8a; margin-top:3px; display:inline-block; }
+.propbox{ background:#faf7ff; border:1px solid #e6dcf5; border-radius:6px; padding:7px 8px; margin-top:6px; font-size:11.5px; color:#4a3a63; }
 .motin{ display:block; margin-top:4px; width:150px; font-size:10.5px; color:#96602a;
         border:1px solid #e6e3dd; border-radius:4px; padding:2px 4px; background:#fffdf9; }
 .motin:focus{ outline:none; border-color:#96602a; }
@@ -529,6 +531,7 @@ let RISP = {};                  /* risposte via Gmail: chiave -> {da,data,oggett
 let COSTI = {};                 /* preventivi confermati: chiave -> {tot,notti,ad,ba,periodo,nota} */
 let RIMB = {};                  /* indirizzi rimbalzati: chiave -> {indirizzo,motivo,data} */
 let ASC = null;                 /* finestra di ascolto della posta: {da,fino} oppure null */
+let LETT = {};                  /* letture proposte dall'analisi delle mail, da confermare */
 let INV = {};                   /* richieste gia' partite: chiave -> data, per non riscrivere due volte */
 let SYNC = SYNC_URL ? "attesa" : "locale";
 let TAB = "";
@@ -550,7 +553,7 @@ function verdBox(h){
   let extra="";
   if(r) extra+=`<button class="risp" data-k="${k}" title="Ha risposto il ${r.data||""}">📨</button>`;
   if(c && c.tot && c.notti) extra+=`<div class="costo">${c.notti} notti · ${c.ad||"?"}+${c.ba||"?"}${c.periodo? " · "+c.periodo : ""}</div>`;
-  extra+=esitoTag(h);
+  extra+=esitoTag(h)+letturaTag(h);
   /* Il motivo si scrive in un campo dentro la riga: le finestrelle di sistema non
      funzionano ovunque, e se non funzionano si portano via anche il giudizio. */
   return `<span class="verd">${b(1,"👍","Preferito")}${b(0,"❓","Da valutare")}${b(-1,"👎","Scartato")}</span>${extra}`
@@ -586,6 +589,7 @@ async function scaricaCondiviso(silenzioso){
     RIMB = d.rimbalzi || {};
     ASC = d.ascolto || null;
     INV = d.inviate || {};
+    LETT = d.letture || {};
     SYNC="ok"; badge(); mostraAscolto();
     if(!silenzioso) render();
   }catch(e){ SYNC="errore"; badge(); }
@@ -640,9 +644,21 @@ function esitoTag(h){
   const t = ESITO_TAG[c.esito]; if(!t) return "";
   return `<div class="tag warn" style="margin-top:3px;display:inline-block">${t}${c.nota? " · "+c.nota : ""}</div>`;
 }
+/* Quello che la lettura automatica ha capito dalla mail. Resta una proposta finche'
+   non la confermi: sopra un dato letto da un programma non ci si prenota una vacanza. */
+function letturaTag(h){
+  const k = hkey(h), l = LETT[k], c = COSTI[k];
+  if(!l || (c && c.esito)) return "";
+  const t = (l.esito==="prezzo" && l.tot>0 && l.notti>0)
+      ? Math.round(l.tot/l.notti)+" €/notte"
+      : (ESITO_TAG[l.esito] || "risposta letta");
+  const dett = [l.minimo? "min "+l.minimo+" notti":"", l.periodo||"", l.nota||""].filter(Boolean).join(" · ");
+  return `<div class="tag lett" title="${String(dett).replace(/"/g,"&quot;")}">📖 ${t} · da confermare</div>`;
+}
 function openRisposta(k){
   const r = RISP[k]; if(!r) return;
   const c = COSTI[k] || {};
+  const l = LETT[k] || null;
   const el = document.getElementById("editor") || Object.assign(document.createElement("div"),{id:"editor"});
   const chips = (r.prezzi||[]).slice(0,8).map(p=>`<button class="chip" data-p="${esc2(p)}">${esc2(p)} €</button>`).join(" ");
   el.innerHTML =
@@ -657,6 +673,13 @@ function openRisposta(k){
    +(r.allegati ? `<div class="sub2" style="margin-top:6px">📎 ${r.allegati} allegato/i nella mail: se il listino è in PDF, il prezzo va letto lì.</div>` : "")
    +(r.link?`<div style="margin:8px 0"><a href="${esc2(r.link)}" target="_blank" rel="noopener">Apri la conversazione in Gmail</a></div>`:"")
    +(chips?`<label>Cifre trovate nel messaggio — tocca per usarle</label><div class="chips">${chips}</div>`:"")
+   +(l ? `<div class="propbox"><b>📖 Letto dalla mail</b><br>`
+        + [ l.esito ? "Esito: " + (ESITO_TAG[l.esito] || "preventivo") : "",
+            (l.tot>0&&l.notti>0) ? `${l.tot} € per ${l.notti} notti — fa ${Math.round(l.tot/l.notti)} € a notte` : "",
+            l.minimo ? `Soggiorno minimo: ${l.minimo} notti` : "",
+            l.periodo ? `Periodo: ${esc2(l.periodo)}` : "",
+            l.nota ? esc2(l.nota) : "" ].filter(Boolean).join("<br>")
+        + `<div style="margin-top:6px"><button class="btn" id="c_usa">Usa questi dati</button></div></div>` : "")
    +`<label>Esito della richiesta</label>
      <select id="c_esito">${ESITI.map(e=>
         `<option value="${e[0]}"${(c.esito||"")===e[0]?" selected":""}>${e[1]}</option>`).join("")}</select>
@@ -682,6 +705,16 @@ function openRisposta(k){
     g("c_calc").textContent = (t>0&&n>0) ? `Fa ${Math.round(t/n)} € a notte per l'intera famiglia.` : "";
   };
   ["c_tot","c_notti"].forEach(i=>g(i).addEventListener("input",calc)); calc();
+  /* La proposta non si salva da sola: riempie i campi, e sei tu a premere Salva. */
+  if(g("c_usa")) g("c_usa").onclick=()=>{
+    if(l.esito) g("c_esito").value=l.esito;
+    if(l.tot>0) g("c_tot").value=l.tot;
+    if(l.notti>0) g("c_notti").value=l.notti;
+    if(l.periodo) g("c_per").value=l.periodo;
+    const n=[l.nota||"", l.minimo? "minimo "+l.minimo+" notti":""].filter(Boolean).join(" · ");
+    if(n) g("c_nota").value=n;
+    calc(); toast("Campi riempiti: controlla e salva");
+  };
   el.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{ g("c_tot").value=b.dataset.p.replace(/[^\d]/g,""); calc(); });
   g("c_save").onclick=()=>{
     const t=+g("c_tot").value, n=+g("c_notti").value, es=g("c_esito").value;
