@@ -515,6 +515,7 @@ let RISP = {};                  /* risposte via Gmail: chiave -> {da,data,oggett
 let COSTI = {};                 /* preventivi confermati: chiave -> {tot,notti,ad,ba,periodo,nota} */
 let RIMB = {};                  /* indirizzi rimbalzati: chiave -> {indirizzo,motivo,data} */
 let ASC = null;                 /* finestra di ascolto della posta: {da,fino} oppure null */
+let INV = {};                   /* richieste gia' partite: chiave -> data, per non riscrivere due volte */
 let SYNC = SYNC_URL ? "attesa" : "locale";
 let TAB = "";
 let PENDING = 0, ULTIMO = 0;
@@ -567,6 +568,7 @@ async function scaricaCondiviso(silenzioso){
     COSTI = d.costi || {};
     RIMB = d.rimbalzi || {};
     ASC = d.ascolto || null;
+    INV = d.inviate || {};
     SYNC="ok"; badge(); mostraAscolto();
     if(!silenzioso) render();
   }catch(e){ SYNC="errore"; badge(); }
@@ -658,7 +660,7 @@ function render(){
       <td><input type="checkbox" class="rowchk" data-n="${hkey(h).replace(/"/g,"&quot;")}" ${on?"checked":""}></td>
       <td class="rank">${i+1}</td>
       <td><div class="name">${h.url?`<a href="${h.url}" target="_blank" rel="noopener">${h.nome}</a>`:h.nome}</div>
-          <div class="loc">${h.loc}${h.rated?"":' · <span class="tag grey">da valutare</span>'} ${mailTag(h)}</div></td>
+          <div class="loc">${h.loc}${h.rated?"":' · <span class="tag grey">da valutare</span>'} ${mailTag(h)} ${invTag(h)}</div></td>
       <td data-l="Zona" class="loc">${h.zona}</td>
       <td data-l="Viaggio" class="num">${hhmm(h.minuti)}</td>
       <td data-l="Categoria" class="num">${starTxt(h.stelle)}</td>
@@ -750,6 +752,13 @@ function rimbalzo(h){
   const r = RIMB[hkey(h)];
   return (r && h.email && r.indirizzo === String(h.email).toLowerCase()) ? r : null;
 }
+/* Segna a chi la richiesta e' gia' partita, cosi' non si riscrive due volte allo stesso hotel. */
+function invTag(h){
+  const d = INV[hkey(h)];
+  if(!d) return "";
+  const [a,m,g] = d.split("-");
+  return `<span class="tag" style="background:#eef2f7;color:#3a5a80">richiesta inviata ${g}/${m}</span>`;
+}
 function mailTag(h){
   const r = rimbalzo(h);
   if (r) return `<span class="tag bad" title="Il messaggio a ${r.indirizzo} e' tornato indietro il ${r.data||"?"}: ${r.motivo||"consegna fallita"}. La struttura resta nel catalogo, ma l'indirizzo va corretto a mano.">↩ ${r.motivo||"consegna fallita"}</span>`;
@@ -760,7 +769,36 @@ function mailTag(h){
 function selectedHotels(){ return LIVE().filter(h=>selected.has(hkey(h))); }
 function mailRecipients(){
   const inclUnv = document.getElementById("inclUnv").checked;
-  return selectedHotels().filter(h=>h.email && !rimbalzo(h) && (h.emailv===1 || inclUnv));
+  /* Due schede possono condividere lo stesso indirizzo: scrivere due volte allo stesso
+     albergo fa una brutta figura, quindi ogni indirizzo compare una volta sola. */
+  const visti = new Set();
+  return selectedHotels().filter(h=>{
+    if(!h.email || rimbalzo(h) || !(h.emailv===1 || inclUnv)) return false;
+    const e = String(h.email).toLowerCase();
+    if(visti.has(e)) return false;
+    visti.add(e); return true;
+  });
+}
+/* Il collegamento al programma di posta viene troncato dal sistema oltre i ~2000 caratteri,
+   e il taglio e' silenzioso: gli ultimi indirizzi sparirebbero senza avviso. I blocchi si
+   chiudono quindi al primo dei due limiti, numero di destinatari o lunghezza del collegamento,
+   perche' un testo lungo nella richiesta lascia posto a meno indirizzi. */
+const BLOCCO = 30, LIMITE_URL = 1800;
+const OGGETTO = "Richiesta preventivo vacanza in famiglia [FH]";
+let bloccoIdx = 0, firmaSel = "";
+function blocchi(){
+  const l=mailRecipients(), out=[];
+  const fisso = "mailto:?bcc=".length + "&subject=".length + encodeURIComponent(OGGETTO).length
+              + "&body=".length + encodeURIComponent(document.getElementById("mailBody").value).length;
+  let cur=[], len=fisso;
+  for(const h of l){
+    const costo = encodeURIComponent(h.email).length + (cur.length ? 3 : 0);   // 3 = virgola codificata
+    if(cur.length && (cur.length>=BLOCCO || len+costo>LIMITE_URL)){ out.push(cur); cur=[]; len=fisso; }
+    len += encodeURIComponent(h.email).length + (cur.length ? 3 : 0);
+    cur.push(h);
+  }
+  if(cur.length) out.push(cur);
+  return out;
 }
 function updateMail(){
   const sel=selectedHotels();
@@ -775,9 +813,27 @@ function updateMail(){
     (ko.length? `, <b>${ko.length}</b> con indirizzo rimbalzato (esclusi dall'invio)` : "")+
     `.<br><span style="color:#8a8378">`+
     sel.map(h=>h.nome).join(" · ")+`</span>`;
-  document.getElementById("btnMail").disabled = withMail.length===0;
-  document.getElementById("mailmsg").textContent = withMail.length===0 && sel.length
-    ? "Nessun destinatario utilizzabile: o mancano gli indirizzi, o sono tutti da confermare. Usa Copia elenco siti." : "";
+  /* Il collegamento al programma di posta ha una lunghezza massima: oltre una trentina
+     di indirizzi il sistema lo taglia e gli ultimi hotel non ricevono niente, in silenzio.
+     Quindi la selezione viene divisa da sola, e i blocchi si aprono uno per volta. */
+  const B=blocchi();
+  const firma=B.flat().map(h=>h.email).join(",");
+  if(firma!==firmaSel){ firmaSel=firma; bloccoIdx=0; }
+  if(bloccoIdx>=B.length) bloccoIdx=0;
+
+  const btn=document.getElementById("btnMail");
+  btn.disabled = withMail.length===0;
+  btn.textContent = B.length<=1
+    ? `Apri la mail con i ${withMail.length||""} selezionati in CCN`.replace("  "," ")
+    : `Apri l'invio ${bloccoIdx+1} di ${B.length} — ${B[bloccoIdx].length} hotel`;
+
+  const msg=document.getElementById("mailmsg");
+  if(withMail.length===0 && sel.length)
+    msg.textContent="Nessun destinatario utilizzabile: o mancano gli indirizzi, o sono tutti da confermare. Usa Copia elenco siti.";
+  else if(B.length>1)
+    msg.textContent=`${withMail.length} destinatari divisi da soli in ${B.length} invii. `+
+      `Apri il primo, spediscilo dal tuo programma di posta, torna qui: il pulsante sara' gia' pronto per il successivo.`;
+  else msg.textContent="";
 }
 document.getElementById("inclUnv").addEventListener("change",()=>{ updateMail(); });
 ["dArr","dPar","nAd","nBa","etaBa","tratt","mNome","mMail","mTel","mExtra"].forEach(id=>
@@ -789,31 +845,55 @@ async function apriAscolto(){
   if(!SYNC_URL) return;
   try{
     const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
-      body:JSON.stringify({avviaAscolto:true})});
+      body:JSON.stringify({avviaAscolto:true, inviate:INV})});
     const d=await r.json();
     ASC = d.ascolto || null;
     mostraAscolto();
   }catch(e){ document.getElementById("mailmsg").textContent=
     "Richieste aperte nel programma di posta, ma non sono riuscito ad avvisare il lettore delle risposte: riprova più tardi."; }
 }
+/* Chiude subito l'ascolto: l'attivatore si toglie da solo al primo controllo, senza leggere nulla. */
+async function chiudiAscolto(){
+  if(!SYNC_URL) return;
+  try{
+    await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({ascolto:null})});
+    ASC=null; mostraAscolto();
+  }catch(e){}
+}
 function mostraAscolto(){
   const el=document.getElementById("ascolto"); if(!el) return;
   if(ASC && new Date() <= new Date(ASC.fino)){
     const f=new Date(ASC.fino);
     el.innerHTML=`<span class="tag">in ascolto delle risposte fino al ${String(f.getDate()).padStart(2,"0")}/${String(f.getMonth()+1).padStart(2,"0")}</span> `+
-      `<span style="color:#8a8378">solo i messaggi arrivati dopo l'invio, un controllo ogni ora.</span>`;
+      `<span style="color:#8a8378">solo i messaggi arrivati dopo l'invio, un controllo ogni ora.</span> `+
+      `<button class="btn" id="stopasc" style="margin-left:4px">Interrompi</button>`;
+    const b=document.getElementById("stopasc");
+    if(b) b.onclick=()=>{ if(confirm("Smetto di controllare le risposte?")) chiudiAscolto(); };
   } else {
     el.innerHTML=`<span class="tag grey">nessun ascolto attivo</span> `+
       `<span style="color:#8a8378">la casella non viene letta. Si accende da sola quando mandi le richieste.</span>`;
   }
 }
 document.getElementById("btnMail").addEventListener("click",()=>{
-  const mails=mailRecipients().map(h=>h.email);
-  const url=`mailto:?bcc=${encodeURIComponent(mails.join(","))}`+
+  const B=blocchi(), gruppo=B[bloccoIdx];
+  if(!gruppo || !gruppo.length) return;
+  const url=`mailto:?bcc=${encodeURIComponent(gruppo.map(h=>h.email).join(","))}`+
     `&subject=${encodeURIComponent("Richiesta preventivo vacanza in famiglia [FH]")}`+
     `&body=${encodeURIComponent(document.getElementById("mailBody").value)}`;
-  if (url.length>1900) document.getElementById("mailmsg").textContent="Attenzione: link molto lungo, alcuni client potrebbero troncarlo. In caso, usa i pulsanti di copia.";
+
+  const oggi=new Date().toISOString().slice(0,10);
+  gruppo.forEach(h=>{ INV[hkey(h)]=oggi; });
   apriAscolto();
+
+  bloccoIdx++;
+  const fatti=bloccoIdx, totali=B.length;
+  if(bloccoIdx>=B.length) bloccoIdx=0;
+  render();
+  document.getElementById("mailmsg").textContent = totali>1
+    ? (fatti>=totali ? `Aperti tutti i ${totali} invii. Controlla di averli spediti davvero dal programma di posta.`
+                     : `Invio ${fatti} di ${totali} aperto. Quando l'hai spedito, premi di nuovo il pulsante per il successivo.`)
+    : "";
   window.location.href=url;
 });
 function copy(txt,msg){
