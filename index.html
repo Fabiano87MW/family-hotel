@@ -104,6 +104,12 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
 .vb:hover{ opacity:.9; filter:none; background:#f6f4f0; }
 .vb.on{ opacity:1; filter:none; border-color:#2f6f4f; background:#eef4f0; }
 .motivo{ font-size:10.5px; color:#96602a; margin-top:3px; max-width:150px; line-height:1.35; }
+.stin{ display:block; margin-top:4px; width:150px; font-size:10.5px; border:1px solid #e6e3dd;
+       border-radius:4px; padding:2px 3px; background:#fff; color:#6f6a61; }
+.stin.st-offerta{ border-color:#2f6f4f; background:#eef4f0; color:#2f6f4f; font-weight:700; }
+.stin.st-chiuso{ border-color:#b04a4a; background:#fdf0f0; color:#b04a4a; font-weight:700; }
+.stin.st-completo{ border-color:#96602a; background:#fdf6ee; color:#96602a; font-weight:700; }
+.stin.st-minimo{ border-color:#5b3f8a; background:#f6f2fc; color:#5b3f8a; font-weight:700; }
 .tag.lett{ background:#f3eefb; color:#5b3f8a; margin-top:3px; display:inline-block; }
 .propbox{ background:#faf7ff; border:1px solid #e6dcf5; border-radius:6px; padding:7px 8px; margin-top:6px; font-size:11.5px; color:#4a3a63; }
 .motin{ display:block; margin-top:4px; width:150px; font-size:10.5px; color:#96602a;
@@ -180,6 +186,17 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
     <label class="chk">da <input type="number" id="cmin" placeholder="—" min="0" step="10" style="width:74px"> €</label>
     <label class="chk">a <input type="number" id="cmax" placeholder="—" min="0" step="10" style="width:74px"> €</label>
     <span id="costomsg" style="font-size:11.5px;color:#8a8378"></span>
+    <span style="font-size:11.5px;color:#8a8378;margin-left:6px">Stato:</span>
+    <select id="fesito">
+      <option value="">tutti gli stati</option>
+      <option value="offerta">OFFERTA</option>
+      <option value="chiuso">CHIUSO</option>
+      <option value="completo">COMPLETO</option>
+      <option value="minimo">SOGG MINIMO</option>
+      <option value="_nessuno">senza stato</option>
+      <option value="_daleggere">con una proposta da confermare</option>
+      <option value="_risposto">chi ha risposto</option>
+    </select>
   </div>
   <div class="filters" style="margin-top:10px">
     <span style="font-size:11.5px;color:#8a8378">Requisiti obbligatori:</span>
@@ -370,6 +387,7 @@ function visibleRows(){
   const reqs=[...document.querySelectorAll(".req:checked")].map(c=>c.dataset.r);
   const STARS=[...document.querySelectorAll(".star:checked")].map(c=>c.dataset.v);
   const fc=document.getElementById("fcosto").value;
+  const fe=document.getElementById("fesito").value;
   const cmin=+document.getElementById("cmin").value || null;
   const cmax=+document.getElementById("cmax").value || null;
 
@@ -384,6 +402,13 @@ function visibleRows(){
       if (fst==="todo" && h.rated) return false;
       /* Una fascia di prezzo ha senso solo su chi un prezzo l'ha dato:
          chi non ha ancora risposto esce, altrimenti il filtro non filtra niente. */
+      if (fe){
+        const st = esitoDi(h), k = hkey(h);
+        if (fe==="_nessuno"   && st) return false;
+        if (fe==="_daleggere" && !(LETT[k] && !st)) return false;
+        if (fe==="_risposto"  && !RISP[k]) return false;
+        if (fe[0]!=="_" && st!==fe) return false;
+      }
       if (fc==="si" && h.costo==null) return false;
       if (fc==="no" && h.costo!=null) return false;
       if ((cmin||cmax) && h.costo==null) return false;
@@ -553,7 +578,7 @@ function verdBox(h){
   let extra="";
   if(r) extra+=`<button class="risp" data-k="${k}" title="Ha risposto il ${r.data||""}">📨</button>`;
   if(c && c.tot && c.notti) extra+=`<div class="costo">${c.notti} notti · ${c.ad||"?"}+${c.ba||"?"}${c.periodo? " · "+c.periodo : ""}</div>`;
-  extra+=esitoTag(h)+letturaTag(h);
+  extra+=statoSel(h)+esitoNota(h)+letturaTag(h);
   /* Il motivo si scrive in un campo dentro la riga: le finestrelle di sistema non
      funzionano ovunque, e se non funzionano si portano via anche il giudizio. */
   return `<span class="verd">${b(1,"👍","Preferito")}${b(0,"❓","Da valutare")}${b(-1,"👎","Scartato")}</span>${extra}`
@@ -629,29 +654,37 @@ function esc2(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g
    chiedono un minimo di notti. Sono informazioni che decidono la vacanza quanto il prezzo,
    e prima non avevano un posto dove stare. */
 const ESITI = [
-  ["",        "— da registrare —"],
-  ["prezzo",  "Ha mandato il preventivo"],
-  ["chiuso",  "Chiuso nel periodo"],
-  ["minimo",  "Soggiorno minimo troppo lungo"],
-  ["pieno",   "Non ha disponibilità"],
-  ["evasiva", "Risposta che non dice il prezzo"]
+  ["",         "— nessuno stato —"],
+  ["offerta",  "OFFERTA"],
+  ["chiuso",   "CHIUSO"],
+  ["completo", "COMPLETO"],
+  ["minimo",   "SOGG MINIMO"]
 ];
-const ESITO_TAG = { chiuso:"chiuso nel periodo", minimo:"soggiorno minimo", pieno:"non disponibile",
-                    evasiva:"risposta senza prezzo" };
-function esitoTag(h){
+const ESITO_TAG = { offerta:"OFFERTA", chiuso:"CHIUSO", completo:"COMPLETO", minimo:"SOGG MINIMO" };
+/* Le prime versioni usavano altri nomi: qui si traducono, cosi' i dati vecchi non si perdono. */
+const ESITO_VECCHI = { prezzo:"offerta", evasiva:"offerta", pieno:"completo" };
+const normEsito = e => ESITO_VECCHI[e] || e || "";
+const esitoDi = h => normEsito((COSTI[hkey(h)]||{}).esito);
+/* Lo stato deciso da te. Si cambia dalla riga, senza aprire niente. */
+function statoSel(h){
+  const k = hkey(h).replace(/"/g,"&quot;"), cur = esitoDi(h);
+  return `<select class="stin${cur? " st-"+cur : ""}" data-k="${k}">`
+       + ESITI.map(e=>`<option value="${e[0]}"${cur===e[0]?" selected":""}>${e[1]}</option>`).join("")
+       + `</select>`;
+}
+function esitoNota(h){
   const c = COSTI[hkey(h)];
-  if(!c || !c.esito || c.esito==="prezzo") return "";
-  const t = ESITO_TAG[c.esito]; if(!t) return "";
-  return `<div class="tag warn" style="margin-top:3px;display:inline-block">${t}${c.nota? " · "+c.nota : ""}</div>`;
+  return (c && c.nota) ? `<div class="motivo">${c.nota}</div>` : "";
 }
 /* Quello che la lettura automatica ha capito dalla mail. Resta una proposta finche'
    non la confermi: sopra un dato letto da un programma non ci si prenota una vacanza. */
 function letturaTag(h){
   const k = hkey(h), l = LETT[k], c = COSTI[k];
   if(!l || (c && c.esito)) return "";
-  const t = (l.esito==="prezzo" && l.tot>0 && l.notti>0)
+  const e = normEsito(l.esito);
+  const t = (e==="offerta" && l.tot>0 && l.notti>0)
       ? Math.round(l.tot/l.notti)+" €/notte"
-      : (ESITO_TAG[l.esito] || "risposta letta");
+      : (ESITO_TAG[e] || "risposta letta");
   const dett = [l.minimo? "min "+l.minimo+" notti":"", l.periodo||"", l.nota||""].filter(Boolean).join(" · ");
   return `<div class="tag lett" title="${String(dett).replace(/"/g,"&quot;")}">📖 ${t} · da confermare</div>`;
 }
@@ -777,6 +810,15 @@ function render(){
     /* Il giudizio si registra sempre e subito. Il motivo, se c'e', si scrive dopo nel campo. */
     setVerdetto(k, v, v=="-1" ? ((VERD[k]&&VERD[k].m)||"") : undefined);
     if(v=="-1"){ const el=document.querySelector('.motin[data-k="'+k.replace(/"/g,'\\"')+'"]'); if(el) el.focus(); }
+  });
+  document.querySelectorAll(".stin").forEach(el=>{
+    el.onchange=()=>{
+      const k=el.dataset.k, v=el.value, c=COSTI[k]||{};
+      if(!v && !(c.tot>0)) delete COSTI[k];
+      else COSTI[k]={...c, esito:v};
+      salvaRamo(); render();
+      toast(v? "Stato: "+(ESITO_TAG[v]||v) : "Stato tolto");
+    };
   });
   document.querySelectorAll(".motin").forEach(el=>{
     el.onkeydown=e=>{ e.stopPropagation(); if(e.key==="Enter") el.blur(); };
@@ -1013,7 +1055,7 @@ Object.keys(DEFAULT_W).forEach(k=>document.getElementById("w_"+k).addEventListen
 document.getElementById("forig").innerHTML=ORIGINI.map((o,i)=>'<option value="'+i+'">'+o[0]+'</option>').join("");
 document.getElementById("fzona").innerHTML='<option value="">Tutte le zone</option>'+
   [...new Set(LIVE().map(h=>h.zona).filter(Boolean))].sort().map(z=>`<option>${z}</option>`).join("");
-["fzona","fstato","fsearch","maxmin","forig","fcosto","cmin","cmax"].forEach(id=>
+["fzona","fstato","fsearch","maxmin","forig","fcosto","cmin","cmax","fesito"].forEach(id=>
   document.getElementById(id).addEventListener("input",()=>{ save(); render(); }));
 document.querySelectorAll(".req").forEach(c=>c.addEventListener("change",()=>{ save(); render(); }));
 document.querySelectorAll(".star").forEach(c=>c.addEventListener("change",()=>{ save(); render(); }));
@@ -1044,7 +1086,7 @@ document.getElementById("reset").addEventListener("click",()=>{
   W={...DEFAULT_W};
   Object.keys(W).forEach(k=>{ document.getElementById("w_"+k).value=W[k]; document.getElementById("v_"+k).textContent=W[k]; });
   maxmin.value=240; forig.value=0;
-  document.getElementById("fcosto").value="";
+  document.getElementById("fcosto").value=""; document.getElementById("fesito").value="";
   document.getElementById("cmin").value=""; document.getElementById("cmax").value="";
   document.querySelectorAll(".star").forEach(c=>c.checked=true);
   document.querySelectorAll(".req").forEach(c=>c.checked=false);
@@ -1053,7 +1095,7 @@ document.getElementById("reset").addEventListener("click",()=>{
 
 function save(){ try{ localStorage.setItem("fh_taa_v2", JSON.stringify({
   W, maxmin:maxmin.value, orig:forig.value, fz:fzona.value, fst:fstato.value, tab:TAB,
-  fc:document.getElementById("fcosto").value,
+  fc:document.getElementById("fcosto").value, fe:document.getElementById("fesito").value,
   cmin:document.getElementById("cmin").value, cmax:document.getElementById("cmax").value,
   stars:[...document.querySelectorAll(".star")].map(c=>c.checked),
   reqs:[...document.querySelectorAll(".req")].map(c=>c.checked),
@@ -1068,6 +1110,7 @@ function load(){ try{
   if(s.stars)document.querySelectorAll(".star").forEach((c,i)=>{ if(s.stars[i]!==undefined) c.checked=s.stars[i]; });
   if(s.fz)fzona.value=s.fz; if(s.fst)fstato.value=s.fst; if(s.tab!==undefined)TAB=s.tab;
   if(s.fc) document.getElementById("fcosto").value=s.fc;
+  if(s.fe) document.getElementById("fesito").value=s.fe;
   if(s.cmin) document.getElementById("cmin").value=s.cmin;
   if(s.cmax) document.getElementById("cmax").value=s.cmax;
   if(s.reqs)document.querySelectorAll(".req").forEach((c,i)=>c.checked=!!s.reqs[i]);
