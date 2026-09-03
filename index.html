@@ -104,23 +104,19 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
 .vb:hover{ opacity:.9; filter:none; background:#f6f4f0; }
 .vb.on{ opacity:1; filter:none; border-color:#2f6f4f; background:#eef4f0; }
 .motivo{ font-size:10.5px; color:#96602a; margin-top:3px; max-width:150px; line-height:1.35; }
+.daimp{ color:#2f6f4f; font-weight:600; font-size:10.5px; }
 .stin{ display:block; margin-top:4px; width:150px; font-size:10.5px; border:1px solid #e6e3dd;
        border-radius:4px; padding:2px 3px; background:#fff; color:#6f6a61; }
 .stin.st-offerta{ border-color:#2f6f4f; background:#eef4f0; color:#2f6f4f; font-weight:700; }
 .stin.st-chiuso{ border-color:#b04a4a; background:#fdf0f0; color:#b04a4a; font-weight:700; }
 .stin.st-completo{ border-color:#96602a; background:#fdf6ee; color:#96602a; font-weight:700; }
 .stin.st-minimo{ border-color:#5b3f8a; background:#f6f2fc; color:#5b3f8a; font-weight:700; }
-.tag.lett{ background:#f3eefb; color:#5b3f8a; margin-top:3px; display:inline-block; }
-.propbox{ background:#faf7ff; border:1px solid #e6dcf5; border-radius:6px; padding:7px 8px; margin-top:6px; font-size:11.5px; color:#4a3a63; }
 .motin{ display:block; margin-top:4px; width:150px; font-size:10.5px; color:#96602a;
         border:1px solid #e6e3dd; border-radius:4px; padding:2px 4px; background:#fffdf9; }
 .motin:focus{ outline:none; border-color:#96602a; }
 #toast{ position:fixed; left:50%; bottom:-60px; transform:translateX(-50%); background:#1f2421; color:#fff;
   padding:9px 16px; border-radius:20px; font-size:13px; z-index:99; transition:bottom .25s; box-shadow:0 4px 16px rgba(0,0,0,.25); }
 #toast.mostra{ bottom:20px; }
-.risp{ font-size:14px; border:1px solid #d8d3ca; background:#fff; border-radius:7px;
-  padding:2px 6px; cursor:pointer; margin-left:4px; }
-.risp:hover{ background:#eef4f0; border-color:#2f6f4f; }
 .costo{ font-size:10.5px; color:#2f6f4f; font-weight:600; margin-top:3px; }
 .mailtxt{ font-size:11.5px; line-height:1.5; background:#faf9f7; border:1px solid #ece9e3;
   border-radius:8px; padding:8px 10px; max-height:190px; overflow:auto; white-space:pre-wrap; }
@@ -194,8 +190,6 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
       <option value="completo">COMPLETO</option>
       <option value="minimo">SOGG MINIMO</option>
       <option value="_nessuno">senza stato</option>
-      <option value="_daleggere">con una proposta da confermare</option>
-      <option value="_risposto">chi ha risposto</option>
     </select>
   </div>
   <div class="filters" style="margin-top:10px">
@@ -405,8 +399,6 @@ function visibleRows(){
       if (fe){
         const st = esitoDi(h), k = hkey(h);
         if (fe==="_nessuno"   && st) return false;
-        if (fe==="_daleggere" && !(LETT[k] && !st)) return false;
-        if (fe==="_risposto"  && !RISP[k]) return false;
         if (fe[0]!=="_" && st!==fe) return false;
       }
       if (fc==="si" && h.costo==null) return false;
@@ -552,11 +544,9 @@ function importOver(){
    risponde, tutto continua a funzionare in locale su questo dispositivo. */
 const SYNC_URL = "https://script.google.com/macros/s/AKfycbw6j95HbLyG2OcdStn0E9VuVuOWAnW9pvlMB1p_-ZVegPQSBPd1gHUnBIHRuFjiKPqC/exec";            /* indirizzo /exec dell'app web di Apps Script */
 let VERD = {};                  /* giudizi: chiave -> {v:1|0|-1, m:"motivo"} */
-let RISP = {};                  /* risposte via Gmail: chiave -> {da,data,oggetto,testo,link,prezzi[]} */
 let COSTI = {};                 /* preventivi confermati: chiave -> {tot,notti,ad,ba,periodo,nota} */
 let RIMB = {};                  /* indirizzi rimbalzati: chiave -> {indirizzo,motivo,data} */
 let ASC = null;                 /* finestra di ascolto della posta: {da,fino} oppure null */
-let LETT = {};                  /* letture proposte dall'analisi delle mail, da confermare */
 let INV = {};                   /* richieste gia' partite: chiave -> data, per non riscrivere due volte */
 let SYNC = SYNC_URL ? "attesa" : "locale";
 let TAB = "";
@@ -574,11 +564,10 @@ function verdBox(h){
   const k = hkey(h).replace(/"/g,"&quot;");
   const b = (val,ico,tit) => `<button class="vb${v==val?" on":""}" data-v="${val}" data-k="${k}" title="${tit}">${ico}</button>`;
   const k2=hkey(h);
-  const r=RISP[k2], c=COSTI[k2];
+  const c=COSTI[k2];
   let extra="";
-  if(r) extra+=`<button class="risp" data-k="${k}" title="Ha risposto il ${r.data||""}">📨</button>`;
   if(c && c.tot && c.notti) extra+=`<div class="costo">${c.notti} notti · ${c.ad||"?"}+${c.ba||"?"}${c.periodo? " · "+c.periodo : ""}</div>`;
-  extra+=statoSel(h)+esitoNota(h)+letturaTag(h);
+  extra+=statoSel(h)+esitoNota(h);
   /* Il motivo si scrive in un campo dentro la riga: le finestrelle di sistema non
      funzionano ovunque, e se non funzionano si portano via anche il giudizio. */
   return `<span class="verd">${b(1,"👍","Preferito")}${b(0,"❓","Da valutare")}${b(-1,"👎","Scartato")}</span>${extra}`
@@ -609,12 +598,10 @@ async function scaricaCondiviso(silenzioso){
     VERD = d.verdetti || {};
     OVER = d.modifiche || {};
     NEWH = Array.isArray(d.aggiunte) ? d.aggiunte : [];
-    RISP = d.risposte || {};
     COSTI = d.costi || {};
     RIMB = d.rimbalzi || {};
     ASC = d.ascolto || null;
     INV = d.inviate || {};
-    LETT = d.letture || {};
     SYNC="ok"; badge(); mostraAscolto();
     if(!silenzioso) render();
   }catch(e){ SYNC="errore"; badge(); }
@@ -676,92 +663,39 @@ function esitoNota(h){
   const c = COSTI[hkey(h)];
   return (c && c.nota) ? `<div class="motivo">${c.nota}</div>` : "";
 }
-/* Quello che la lettura automatica ha capito dalla mail. Resta una proposta finche'
-   non la confermi: sopra un dato letto da un programma non ci si prenota una vacanza. */
-function letturaTag(h){
-  const k = hkey(h), l = LETT[k], c = COSTI[k];
-  if(!l || (c && c.esito)) return "";
-  const e = normEsito(l.esito);
-  const t = (e==="offerta" && l.tot>0 && l.notti>0)
-      ? Math.round(l.tot/l.notti)+" €/notte"
-      : (ESITO_TAG[e] || "risposta letta");
-  const dett = [l.minimo? "min "+l.minimo+" notti":"", l.periodo||"", l.nota||""].filter(Boolean).join(" · ");
-  return `<div class="tag lett" title="${String(dett).replace(/"/g,"&quot;")}">📖 ${t} · da confermare</div>`;
-}
-function openRisposta(k){
-  const r = RISP[k]; if(!r) return;
+function openOfferta(k){
   const c = COSTI[k] || {};
-  const l = LETT[k] || null;
   const el = document.getElementById("editor") || Object.assign(document.createElement("div"),{id:"editor"});
-  const chips = (r.prezzi||[]).slice(0,8).map(p=>`<button class="chip" data-p="${esc2(p)}">${esc2(p)} €</button>`).join(" ");
   el.innerHTML =
-    `<h3>📨 Risposta ricevuta</h3>`
-   +`<div class="sub2">${esc2(r.da)} · ${esc2(r.data)}</div>`
-   +`<div style="font-weight:600;font-size:12.5px;margin-bottom:4px">${esc2(r.oggetto)}</div>`
-   +`<div class="mailtxt">${esc2(r.testo).replace(/\n/g,"<br>")}</div>`
-   +((r.link_offerta||[]).length
-       ? `<label>Offerta online — molti hotel mettono qui il preventivo</label><div class="chips">`
-         + r.link_offerta.map((u,i)=>`<a class="chip off" href="${esc2(u)}" target="_blank" rel="noopener">🔗 ${i===0?"Apri l'offerta":"Link "+(i+1)}</a>`).join(" ")
-         + `</div>` : "")
-   +(r.allegati ? `<div class="sub2" style="margin-top:6px">📎 ${r.allegati} allegato/i nella mail: se il listino è in PDF, il prezzo va letto lì.</div>` : "")
-   +(r.link?`<div style="margin:8px 0"><a href="${esc2(r.link)}" target="_blank" rel="noopener">Apri la conversazione in Gmail</a></div>`:"")
-   +(chips?`<label>Cifre trovate nel messaggio — tocca per usarle</label><div class="chips">${chips}</div>`:"")
-   +(l ? `<div class="propbox"><b>📖 Letto dalla mail</b><br>`
-        + [ l.esito ? "Esito: " + (ESITO_TAG[l.esito] || "preventivo") : "",
-            (l.tot>0&&l.notti>0) ? `${l.tot} € per ${l.notti} notti — fa ${Math.round(l.tot/l.notti)} € a notte` : "",
-            l.minimo ? `Soggiorno minimo: ${l.minimo} notti` : "",
-            l.periodo ? `Periodo: ${esc2(l.periodo)}` : "",
-            l.nota ? esc2(l.nota) : "" ].filter(Boolean).join("<br>")
-        + `<div style="margin-top:6px"><button class="btn" id="c_usa">Usa questi dati</button></div></div>` : "")
-   +`<label>Esito della richiesta</label>
-     <select id="c_esito">${ESITI.map(e=>
-        `<option value="${e[0]}"${(c.esito||"")===e[0]?" selected":""}>${e[1]}</option>`).join("")}</select>
-     <label>Preventivo, se lo ha mandato</label>
-     <div class="eg">
-       <div><label>Totale €</label><input id="c_tot" type="number" min="0" step="1" value="${c.tot??""}"></div>
+    `<h3>Offerta</h3>`
+   +`<div class="sub2">${esc2(k)}</div>`
+   +`<div class="eg">
        <div><label>Notti</label><input id="c_notti" type="number" min="1" step="1" value="${c.notti??""}"></div>
-       <div><label>Adulti</label><input id="c_ad" type="number" min="1" step="1" value="${c.ad??2}"></div>
-       <div><label>Bambini</label><input id="c_ba" type="number" min="0" step="1" value="${c.ba??2}"></div>
+       <div><label>Totale &euro;</label><input id="c_tot" type="number" min="0" step="1" value="${c.tot??""}"></div>
      </div>
-     <label>Periodo</label><input id="c_per" type="text" placeholder="es. ottobre 2026" value="${esc2(c.periodo)}">
-     <label>Nota</label><input id="c_nota" type="text" placeholder="es. mezza pensione, camera family" value="${esc2(c.nota)}">
      <div id="c_calc" class="sub2" style="margin-top:6px"></div>
+     <label>Periodo</label><input id="c_per" type="text" placeholder="es. 6-13 febbraio 2027" value="${esc2(c.periodo)}">
+     <label>Nota</label><input id="c_nota" type="text" placeholder="es. mezza pensione, camera family" value="${esc2(c.nota)}">
      <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
-       <button class="btn primary" id="c_save">Salva il preventivo</button>
-       <button class="btn" id="c_del">Cancella</button>
+       <button class="btn primary" id="c_save">Salva</button>
+       <button class="btn" id="c_del">Togli l'offerta</button>
        <button class="btn" id="c_close">Chiudi</button>
      </div>`;
   if(!el.parentNode) document.body.appendChild(el);
   const g=id=>document.getElementById(id);
   const calc=()=>{
     const t=+g("c_tot").value, n=+g("c_notti").value;
-    g("c_calc").textContent = (t>0&&n>0) ? `Fa ${Math.round(t/n)} € a notte per l'intera famiglia.` : "";
+    g("c_calc").textContent = (t>0&&n>0) ? `Fa ${Math.round(t/n)} \u20ac a notte.` : "";
   };
   ["c_tot","c_notti"].forEach(i=>g(i).addEventListener("input",calc)); calc();
-  /* La proposta non si salva da sola: riempie i campi, e sei tu a premere Salva. */
-  if(g("c_usa")) g("c_usa").onclick=()=>{
-    if(l.esito) g("c_esito").value=l.esito;
-    if(l.tot>0) g("c_tot").value=l.tot;
-    if(l.notti>0) g("c_notti").value=l.notti;
-    if(l.periodo) g("c_per").value=l.periodo;
-    const n=[l.nota||"", l.minimo? "minimo "+l.minimo+" notti":""].filter(Boolean).join(" · ");
-    if(n) g("c_nota").value=n;
-    calc(); toast("Campi riempiti: controlla e salva");
-  };
-  el.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{ g("c_tot").value=b.dataset.p.replace(/[^\d]/g,""); calc(); });
+  g("c_notti").focus();
   g("c_save").onclick=()=>{
-    const t=+g("c_tot").value, n=+g("c_notti").value, es=g("c_esito").value;
-    const conPrezzo = t>0 && n>0;
-    if(es==="prezzo" && !conPrezzo){ toast("Per il preventivo servono totale e notti."); return; }
-    if(!es && !conPrezzo){ toast("Scegli un esito, oppure metti totale e notti."); return; }
-    COSTI[k]={tot:conPrezzo?t:null, notti:conPrezzo?n:null,
-              ad:+g("c_ad").value||null, ba:+g("c_ba").value||null,
-              periodo:g("c_per").value.trim(), nota:g("c_nota").value.trim(),
-              esito: es || "prezzo"};
-    salvaRamo(); render(); closeEditor();
-    toast(conPrezzo? "Preventivo salvato" : "Esito registrato");
+    const t=+g("c_tot").value, n=+g("c_notti").value;
+    if(!(t>0&&n>0)){ toast("Servono le notti e il totale."); return; }
+    COSTI[k]={esito:"offerta", tot:t, notti:n, periodo:g("c_per").value.trim(), nota:g("c_nota").value.trim()};
+    salvaRamo(); render(); closeEditor(); toast(`Salvata: ${Math.round(t/n)} \u20ac a notte`);
   };
-  g("c_del").onclick=()=>{ delete COSTI[k]; salvaRamo(); render(); closeEditor(); toast("Preventivo rimosso"); };
+  g("c_del").onclick=()=>{ delete COSTI[k]; salvaRamo(); render(); closeEditor(); toast("Offerta rimossa"); };
   g("c_close").onclick=closeEditor;
 }
 
@@ -777,7 +711,7 @@ function render(){
       <td data-l="Zona" class="loc">${h.zona}</td>
       <td data-l="Viaggio" class="num">${hhmm(h.minuti)}</td>
       <td data-l="Categoria" class="num">${starTxt(h.stelle)}</td>
-      <td class="num">${h.costo!=null ? `<b>${h.costo}</b>` : '<span style="color:#c9c3b8">—</span>'}</td>
+      <td class="num costocell" data-k="${hkey(h).replace(/"/g,"&quot;")}">${h.costo!=null ? `<b>${h.costo}</b>` : (esitoDi(h)==="offerta" ? '<span class="daimp">metti il prezzo</span>' : '<span style="color:#c9c3b8">—</span>')}</td>
       <td data-l="SPA">${dots(h.spa)} ${nordTag(h.nordica)}</td>
       <td data-l="Giochi interni">${dots(h.giochi)}</td>
       <td data-l="Piscine interne">${dots(h.piscine)}</td>
@@ -804,20 +738,25 @@ function render(){
     th.classList.remove("sorted","asc");
     if (th.dataset.k===sortKey) th.classList.add(sortDir===1?"asc":"sorted");
   });
-  document.querySelectorAll(".risp").forEach(b=>b.onclick=()=>openRisposta(b.dataset.k));
   document.querySelectorAll(".vb").forEach(b=>b.onclick=()=>{
     const k=b.dataset.k, v=b.dataset.v;
     /* Il giudizio si registra sempre e subito. Il motivo, se c'e', si scrive dopo nel campo. */
     setVerdetto(k, v, v=="-1" ? ((VERD[k]&&VERD[k].m)||"") : undefined);
     if(v=="-1"){ const el=document.querySelector('.motin[data-k="'+k.replace(/"/g,'\\"')+'"]'); if(el) el.focus(); }
   });
+  document.querySelectorAll(".costocell").forEach(td=>{
+    td.style.cursor="pointer";
+    td.onclick=()=>openOfferta(td.dataset.k);
+  });
   document.querySelectorAll(".stin").forEach(el=>{
     el.onchange=()=>{
       const k=el.dataset.k, v=el.value, c=COSTI[k]||{};
-      if(!v && !(c.tot>0)) delete COSTI[k];
+      if(!v) delete COSTI[k];
       else COSTI[k]={...c, esito:v};
       salvaRamo(); render();
-      toast(v? "Stato: "+(ESITO_TAG[v]||v) : "Stato tolto");
+      /* OFFERTA vuole due numeri: si aprono subito, senza doverli cercare. */
+      if(v==="offerta") openOfferta(k);
+      else toast(v? "Stato: "+(ESITO_TAG[v]||v) : "Stato tolto");
     };
   });
   document.querySelectorAll(".motin").forEach(el=>{
