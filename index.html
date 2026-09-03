@@ -190,6 +190,7 @@ tr.mod { box-shadow: inset 3px 0 0 #c2892f; }
       <option value="completo">COMPLETO</option>
       <option value="minimo">SOGG MINIMO</option>
       <option value="_nessuno">senza stato</option>
+      <option value="_eliminati">le eliminate</option>
     </select>
   </div>
   <div class="filters" style="margin-top:10px">
@@ -396,7 +397,9 @@ function visibleRows(){
       if (fst==="todo" && h.rated) return false;
       /* Una fascia di prezzo ha senso solo su chi un prezzo l'ha dato:
          chi non ha ancora risposto esce, altrimenti il filtro non filtra niente. */
-      if (fe){
+      if (fe==="_eliminati"){ if(!rimosso(h)) return false; }
+      else if (rimosso(h)) return false;
+      if (fe && fe!=="_eliminati"){
         const st = esitoDi(h), k = hkey(h);
         if (fe==="_nessuno"   && st) return false;
         if (fe[0]!=="_" && st!==fe) return false;
@@ -433,6 +436,9 @@ const EMV=[['null','nessun indirizzo'],['0','da confermare'],['1','verificata su
 const CRITLBL={spa:'SPA',giochi:'Area giochi interna',piscine:'Piscine interne',miniclub:'Miniclub',attivita:'Programma attività',cucina:'Cucina'};
 
 function origOf(k){ return LIVE().find(x=>hkey(x)===k); }
+const rimosso = h => !!RIM[hkey(h)];
+/* Le strutture tolte restano nell'archivio: si possono rivedere e rimettere. */
+const VIVE = () => LIVE().filter(h=>!rimosso(h));
 function opt(v,l,cur){ return '<option value="'+v+'"'+(String(cur)===String(v)?' selected':'')+'>'+l+'</option>'; }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
@@ -468,7 +474,10 @@ function openEditor(k){
    +'<div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">'
    +'<button class="btn primary" id="e_save">Salva</button>'
    +(isAdd?'':'<button class="btn" id="e_reset">Sblocca e ripristina</button>')
-   +(isAdd||cur._add!=='tua'?'':'<button class="btn" id="e_del">Elimina</button>')
+   +(isAdd?'':(cur._add==='tua'
+        ? '<button class="btn" id="e_del">Elimina</button>'
+        : (RIM[k] ? '<button class="btn" id="e_rip">Rimetti nella lista</button>'
+                  : '<button class="btn" id="e_rim">Elimina dalla lista</button>')))
    +'<button class="btn" id="e_close">Chiudi</button></div>';
   if(!el.parentNode) document.body.appendChild(el);
 
@@ -502,6 +511,16 @@ function openEditor(k){
   if(rs) rs.onclick=()=>{ if(confirm('Sblocca i campi e ripristina il dato del catalogo?')){ delete OVER[k]; saveOver(); render(); closeEditor(); } };
   const dl=document.getElementById('e_del');
   if(dl) dl.onclick=()=>{ if(confirm('Eliminare questa struttura aggiunta da te?')){ NEWH=NEWH.filter(x=>hkey(x)!==k); saveNew(); delete OVER[k]; saveOver(); render(); closeEditor(); } };
+  /* Le strutture del catalogo non si cancellano: si nascondono. L'aggiornamento del lunedi'
+     le rimetterebbe comunque dentro, e cosi' invece la scelta resta tua e si puo' disfare. */
+  const rm=document.getElementById('e_rim');
+  if(rm) rm.onclick=()=>{
+    if(!confirm('Togliere questa struttura dalla lista? La puoi rimettere dal filtro "le eliminate".')) return;
+    RIM[k]={quando:new Date().toISOString().slice(0,10)};
+    selected.delete(k); save(); salvaRamo(); render(); closeEditor(); toast('Tolta dalla lista');
+  };
+  const rp=document.getElementById('e_rip');
+  if(rp) rp.onclick=()=>{ delete RIM[k]; salvaRamo(); render(); closeEditor(); toast('Rimessa nella lista'); };
   document.getElementById('e_close').onclick=closeEditor;
 }
 function closeEditor(){ const e=document.getElementById('editor'); if(e) e.remove(); }
@@ -548,6 +567,7 @@ let COSTI = {};                 /* preventivi confermati: chiave -> {tot,notti,a
 let RIMB = {};                  /* indirizzi rimbalzati: chiave -> {indirizzo,motivo,data} */
 let ASC = null;                 /* finestra di ascolto della posta: {da,fino} oppure null */
 let INV = {};                   /* richieste gia' partite: chiave -> data, per non riscrivere due volte */
+let RIM = {};                   /* strutture tolte dalla lista: chiave -> {quando}. Nascoste, non cancellate. */
 let SYNC = SYNC_URL ? "attesa" : "locale";
 let TAB = "";
 let PENDING = 0, ULTIMO = 0;
@@ -568,6 +588,7 @@ function verdBox(h){
   let extra="";
   if(c && c.tot && c.notti) extra+=`<div class="costo">${c.notti} notti · ${c.ad||"?"}+${c.ba||"?"}${c.periodo? " · "+c.periodo : ""}</div>`;
   extra+=statoSel(h)+esitoNota(h);
+  if(rimosso(h)) extra+='<div class="tag bad" style="margin-top:3px;display:inline-block">eliminata</div>';
   /* Il motivo si scrive in un campo dentro la riga: le finestrelle di sistema non
      funzionano ovunque, e se non funzionano si portano via anche il giudizio. */
   return `<span class="verd">${b(1,"👍","Preferito")}${b(0,"❓","Da valutare")}${b(-1,"👎","Scartato")}</span>${extra}`
@@ -602,6 +623,7 @@ async function scaricaCondiviso(silenzioso){
     RIMB = d.rimbalzi || {};
     ASC = d.ascolto || null;
     INV = d.inviate || {};
+    RIM = d.rimossi || {};
     SYNC="ok"; badge(); mostraAscolto();
     if(!silenzioso) render();
   }catch(e){ SYNC="errore"; badge(); }
@@ -616,7 +638,7 @@ function salvaRamo(){
     try{
       const r=await fetch(SYNC_URL,{method:"POST",
         headers:{"Content-Type":"text/plain;charset=utf-8"},
-        body:JSON.stringify({verdetti:VERD,modifiche:OVER,aggiunte:NEWH,costi:COSTI})});
+        body:JSON.stringify({verdetti:VERD,modifiche:OVER,aggiunte:NEWH,costi:COSTI,rimossi:RIM})});
       if(!r.ok) throw new Error(r.status);
       SYNC="ok"; badge();
     }catch(e){ SYNC="errore"; badge(); toast("Non sono riuscito a salvare online"); }
@@ -723,7 +745,8 @@ function render(){
       <td class="note"><div class="txt">${h.note||""}</div><div style="margin-top:3px;display:flex;gap:4px"><button class="more" data-k="${hkey(h).replace(/"/g,"&quot;")}">+</button><button class="edit" data-k="${hkey(h).replace(/"/g,"&quot;")}">modifica</button></div></td></tr>`;
   }).join("");
 
-  const ALLH=LIVE(); const nRated=ALLH.filter(isRated).length;
+  const ALLH=VIVE(); const nRated=ALLH.filter(isRated).length;
+  const nRim=Object.keys(RIM).length;
   { /* il filtro sul costo lavora solo su chi ha risposto: dirlo evita di credere che sia rotto */
     const nCosti=ALLH.filter(x=>costoNotte(x)!=null).length;
     const cm=document.getElementById("costomsg");
@@ -732,7 +755,7 @@ function render(){
       : "Nessun preventivo confermato per ora: il costo compare dopo che hai registrato la risposta di un hotel.";
   }
   document.getElementById("count").innerHTML =
-    `<b>${rows.length}</b> strutture su ${ALLH.length} · ${nRated} valutate · partenza da ${origine()[0]} · <b>${selected.size}</b> selezionate`;
+    `<b>${rows.length}</b> strutture su ${ALLH.length} · ${nRated} valutate${nRim? " · "+nRim+" eliminate":""} · partenza da ${origine()[0]} · <b>${selected.size}</b> selezionate`;
 
   document.querySelectorAll("th[data-k]").forEach(th=>{
     th.classList.remove("sorted","asc");
@@ -763,7 +786,7 @@ function render(){
     el.onkeydown=e=>{ e.stopPropagation(); if(e.key==="Enter") el.blur(); };
     el.onchange=()=>setVerdetto(el.dataset.k, -1, el.value.trim(), true);
   });
-  { const tutte=LIVE(), c={"":tutte.length,"1":0,"0":0,"-1":0};
+  { const tutte=VIVE(), c={"":tutte.length,"1":0,"0":0,"-1":0};
     tutte.forEach(x=>{ c[String(verdOf(x).v)]++; });
     document.querySelectorAll(".tab").forEach(t=>{
       t.classList.toggle("attiva", t.dataset.t===TAB);
@@ -832,7 +855,7 @@ function mailTag(h){
   return h.emailv===1 ? '<span class="tag">email verificata</span>'
                       : '<span class="tag warn">email da confermare</span>';
 }
-function selectedHotels(){ return LIVE().filter(h=>selected.has(hkey(h))); }
+function selectedHotels(){ return VIVE().filter(h=>selected.has(hkey(h))); }
 function mailRecipients(){
   const inclUnv = document.getElementById("inclUnv").checked;
   /* Due schede possono condividere lo stesso indirizzo: scrivere due volte allo stesso
