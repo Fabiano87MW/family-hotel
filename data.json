@@ -2,10 +2,10 @@
  "aggiornato": "2026-09-07",
  "generato": "2026-09-07T07:22:36.932805Z",
  "statistiche": {
-  "strutture": 217,
-  "valutate": 217,
-  "email": 217,
-  "emailVerificate": 173
+  "strutture": 218,
+  "valutate": 218,
+  "email": 218,
+  "emailVerificate": 174
  },
  "fields": [
   "nome",
@@ -4803,6 +4803,28 @@
    0,
    46.013,
    11.301
+  ],
+  [
+   "Elgus Nature Retreat",
+   "Vallagarina e Brentonico",
+   "San Giacomo, Brentonico",
+   4.5,
+   null,
+   "MP",
+   5,
+   -1,
+   3,
+   4,
+   4,
+   4,
+   3,
+   105,
+   "San Giacomo di Brentonico, circa 1.200 m sul Monte Baldo. Due aree wellness per soli maggiorenni: Nature Spa con sauna finlandese, bagno di vapore, Kneipp e letti di fieno, e Sky Forest sul tetto con piscina a sfioro. Family spa separata con piscina interna, vasche per bambini e scivoli. Miniclub pomeridiano in stagione dai 3 anni. Impianti di San Valentino e piste da fondo a pochi minuti.",
+   "https://www.elgus.it/",
+   "info@elgus.it",
+   1,
+   45.7993593,
+   10.9309889
   ]
  ],
  "overrides": {},
