@@ -707,7 +707,7 @@ function openOfferta(k){
   const g=id=>document.getElementById(id);
   const calc=()=>{
     const t=+g("c_tot").value, n=+g("c_notti").value;
-    g("c_calc").textContent = (t>0&&n>0) ? `Fa ${Math.round(t/n)} \u20ac a notte.` : "";
+    g("c_calc").textContent = (t>0&&n>0) ? `Fa ${Math.round(t/n)} € a notte.` : "";
   };
   ["c_tot","c_notti"].forEach(i=>g(i).addEventListener("input",calc)); calc();
   g("c_notti").focus();
@@ -715,7 +715,7 @@ function openOfferta(k){
     const t=+g("c_tot").value, n=+g("c_notti").value;
     if(!(t>0&&n>0)){ toast("Servono le notti e il totale."); return; }
     COSTI[k]={esito:"offerta", tot:t, notti:n, periodo:g("c_per").value.trim(), nota:g("c_nota").value.trim()};
-    salvaRamo(); render(); closeEditor(); toast(`Salvata: ${Math.round(t/n)} \u20ac a notte`);
+    salvaRamo(); render(); closeEditor(); toast(`Salvata: ${Math.round(t/n)} € a notte`);
   };
   g("c_del").onclick=()=>{ delete COSTI[k]; salvaRamo(); render(); closeEditor(); toast("Offerta rimossa"); };
   g("c_close").onclick=closeEditor;
@@ -827,8 +827,7 @@ Vi chiederei cortesemente:
 1. se siete aperti in quel periodo e se avete disponibilità;
 2. il preventivo, con il dettaglio della sistemazione proposta e degli sconti applicati ai bambini;
 3. eventuali offerte o pacchetti attivi per quelle date;
-4. se la vostra area sauna prevede l'uso obbligatorio del costume oppure segue la formula nordica senza costume, e in quali orari è accessibile;
-5. gli orari e le fasce d'età del miniclub, e se l'assistenza è inclusa nella tariffa.
+4. gli orari e le fasce d'età del miniclub, e se l'assistenza è inclusa nella tariffa.
 
 ${extra? "\nInoltre: "+extra+"\n" : ""}
 Resto in attesa di un vostro riscontro e vi ringrazio in anticipo.
@@ -1083,15 +1082,14 @@ function load(){ try{
 
 document.getElementById("legend").innerHTML =
   "<b>Come leggere.</b> I pallini sono valutazioni 0-5 assegnate dai servizi dichiarati dalle strutture, non dalle recensioni. "+
-  "<b>SPA nordica</b>: praticamente nessun hotel dichiara la regola sul costume, quindi la colonna contiene stime dichiarate come tali. <i>Probabile</i> = struttura altoatesina con area sauna vera, dove la tradizione textilfrei è la norma. <i>Improbabile</i> = family hotel trentino con area benessere concepita per l'uso familiare, dove il costume è la prassi (per Das Mühlwald la regola è scritta nero su bianco, per gli altri è un'inferenza). <i>Confermata</i>: al momento nessuna, perché nessuna struttura lo mette per iscritto. La domanda è già dentro al testo della richiesta di preventivo, così te lo dicono loro. "+
   "<b>Cucina</b>: gli hotel dei consorzi hanno standard minimi comuni (menù bimbi, orari dedicati), quindi partono da 3 e salgono solo dove ci sono elementi documentati. "+
   "<b>Prezzo</b>: stima famiglia 2+2 = tariffa minima per adulto in mezza pensione × 3, cioè una tariffa di partenza in bassa stagione, non un preventivo. In alta stagione aspettati dal 40 al 70% in più. "+
   "<b>Tempi di percorrenza</b>: stime in auto da Castelli Calepio in condizioni normali, via A4-A22 oppure via Val Camonica per la Val di Sole. Non sono tempi calcolati da un servizio di navigazione.";
 
 document.getElementById("meta").innerHTML =
   "<b>Sul prezzo:</b> il catalogo non lo mette in classifica. Un family hotel cambia tariffa del doppio fra aprile e agosto, quindi un numero solo sarebbe fuorviante metà dell'anno. Dove le fonti lo pubblicano lo trovi nella scheda e nelle note, ma il preventivo vero si chiede alla struttura: il testo della richiesta qui sopra lo domanda già.<br>"+
-  "<b>Fonti:</b> consorzio Italy Family Hotels (tariffe minime dichiarate), consorzio My Family Hotel / Giocovacanza, Andalo for Family, portale family hotel Val Pusteria, FamilyGO, consorzio Familienhotels Südtirol, elenco tematico Family Hotels di trentino.com.<br>"+
-  "<b>Ultimo aggiornamento dati:</b> 31 agosto 2026 (corsa email: 14 indirizzi verificati sul sito ufficiale, di cui 2 aggiunti dove mancavano e 1 corretto perche' sbagliato (Hotel San Giacomo, ora Elgus Nature Retreat); 13 link aggiornati dal portale al sito ufficiale; 9 non verificabili; restano 37 da confermare e 9 senza indirizzo).";
+  "<b>Fonti:</b> consorzio Italy Family Hotels (tariffe minime dichiarate), consorzio My Family Hotel / Giocovacanza, Andalo for Family, portale family hotel Val Pusteria, FamilyGO, consorzio Familienhotels Südtirol, elenco tematico Family Hotels di trentino.com, anagrafica Open Data Hub Alto Adige.<br>"+
+  "<b>Ultimo aggiornamento dati: 2026-09-28</b> (0 nuove strutture ammesse: unico candidato promettente, Family Hotel Biancaneve a Selva di Val Gardena, risultava già in catalogo con nome in altro ordine; 5 candidati scartati per servizi family insufficienti — Ampark a Olang, Residence Klementhof e Corones Suites a Valdaora, Christophorus Mountain Residence a San Vigilio di Marebbe: residence senza miniclub né assistenza bambini; Nature Bio Hotel Elite a Levico Terme (valle Valsugana e Levico, turno settimanale): solo area giochi generica, nessun miniclub; anagrafica Open Data Hub Alto Adige scandagliata dalle pagine 4 a 6 (144 strutture italiane, 134 sconosciute al catalogo); 0 irreperibili scaduti da ritentare (i 5 aperti risalgono ad agosto 2026, sotto i tre mesi); controllo qualità: 2 schede corrette con categoria verificata sul sito ufficiale (Panoramahotel Huberhof e Hotel Olympia, entrambe 4 stelle), 0 doppioni, 0 coordinate mancanti, 0 zone/nordica/minuti/criteri fuori intervallo, 0 note oltre il tetto di 400 caratteri.";
 
 load(); loadMitt(); document.getElementById("mailBody").value=buildBody(); render(); badge();
 scaricaCondiviso();
